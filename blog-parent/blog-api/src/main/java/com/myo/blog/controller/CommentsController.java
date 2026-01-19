@@ -1,6 +1,7 @@
 package com.myo.blog.controller;
 
 import com.myo.blog.common.aop.RateLimit;
+import com.myo.blog.common.cache.Cache;
 import com.myo.blog.service.CommentsService;
 import com.myo.blog.entity.Result;
 import com.myo.blog.entity.params.CommentParam;
@@ -21,7 +22,7 @@ public class CommentsController {
     @Autowired
     private CommentsService commentsService;
 
-    ///comments/article/{id}
+    // 查询文章下的评论列表
     @GetMapping("article/{id}")
     public Result comments(@PathVariable("id") String id){
         HttpServletRequest request = HttpContextUtils.getHttpServletRequest();

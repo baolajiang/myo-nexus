@@ -3,6 +3,7 @@ package com.myo.blog.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.myo.blog.config.RabbitConfig;
 import com.myo.blog.dao.dos.articles;
 import com.myo.blog.dao.mapper.ArticleBodyMapper;
 import com.myo.blog.dao.mapper.ArticleMapper;
@@ -21,6 +22,9 @@ import com.myo.blog.entity.params.ArticleParam;
 import com.myo.blog.entity.params.PageParams;
 import com.myo.blog.utils.ArticleUtils;
 import com.myo.blog.utils.UserThreadLocal;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.*;
-
+@Slf4j
 @Service
 public class ArticleServiceImpl implements ArticleService {
 
@@ -47,7 +51,8 @@ public class ArticleServiceImpl implements ArticleService {
     private ThreadService threadService;
     @Autowired
     private ArticleTagMapper articleTagMapper;
-
+    @Autowired
+    private RabbitTemplate rabbitTemplate; // 注入 RabbitTemplate
 
     @Override
     public Result listArticle(PageParams pageParams,String token) {
@@ -144,13 +149,30 @@ public class ArticleServiceImpl implements ArticleService {
         articleBody.setContent(articleParam.getBody().getContent());
         articleBody.setContentHtml(articleParam.getBody().getContentHtml());
         articleBody.setArticleId(article.getId());
+
         articleBodyMapper.insert(articleBody);
 
         article.setBodyId(articleBody.getId());
+
         articleMapper.updateById(article);
+        // ================== 发送 MQ 消息 (生产级写法) ==================
+        try {
+            // 发送消息
+            rabbitTemplate.convertAndSend(RabbitConfig.BLOG_EXCHANGE, "article.publish", article.getId());
+            log.info("【MQ消息发送成功】文章ID: {}", article.getId());
+
+        } catch (AmqpException e) {
+            // 错误处理：如果 MQ 发送失败，不能让发布文章这个动作回滚！
+            // 只要数据库存进去了，文章就算发成功了。缓存没删掉顶多是延迟更新，不能影响主业务。
+            log.error("【MQ消息发送失败】MQ服务可能异常，请检查！文章ID: {}", article.getId(), e);
+            // 降级策略 (可选)：如果 MQ 挂了，这里可以手动删一次 Redis 作为兜底
+            // redisTemplate.delete("listArticle*");
+        }
 
         Map<String, String> map = new HashMap<>();
         map.put("id", article.getId()); // 已经是 String
+
+
         return Result.success(map);
     }
 

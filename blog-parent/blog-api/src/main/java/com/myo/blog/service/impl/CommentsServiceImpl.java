@@ -1,6 +1,9 @@
 package com.myo.blog.service.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.myo.blog.config.RabbitConfig;
 import com.myo.blog.dao.mapper.CommentMapper;
 import com.myo.blog.dao.pojo.Comment;
 import com.myo.blog.dao.pojo.SysUser;
@@ -14,14 +17,19 @@ import com.myo.blog.entity.UserVo;
 import com.myo.blog.entity.params.CommentParam;
 import org.apache.commons.collections.CollectionUtils;
 import org.joda.time.DateTime;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class CommentsServiceImpl implements CommentsService {
     @Autowired
@@ -29,14 +37,15 @@ public class CommentsServiceImpl implements CommentsService {
     @Autowired
     private SysUserService sysUserService;
 
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
     @Override
     public Result commentsByArticleId(String id) {
-        /**
-         * 1. 根据文章id 查询 评论列表 从 comment 表中查询
-         * 2. 根据作者的id 查询作者的信息
-         * 3. 判断 如果 level = 1 要去查询它有没有子评论
-         * 4. 如果有 根据评论id 进行查询 （parent_id）
-         */
+        // Redis
+        String cacheKey = "comment::article::" + id;
+
+
         LambdaQueryWrapper<Comment> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Comment::getArticleId,id);
         queryWrapper.eq(Comment::getLevel,1);
@@ -51,7 +60,7 @@ public class CommentsServiceImpl implements CommentsService {
     @Override
     public Result comment(CommentParam commentParam) {
         SysUser sysUser = UserThreadLocal.get();
-        System.out.println("用户:"+sysUser);
+
 
         Comment comment = new Comment();
         comment.setArticleId(commentParam.getArticleId());
@@ -64,12 +73,13 @@ public class CommentsServiceImpl implements CommentsService {
         }else{
             comment.setLevel(2);
         }
+
         comment.setParentId(parent == null ? "0" : parent);
+
         String toUserId = commentParam.getToUserId();
+
         comment.setToUid(toUserId == null ? "0" : toUserId);
-        int t=this.commentMapper.insert(comment);
-/*        System.out.println("看评论:"+t);
-        System.out.println("看看那个文章:"+comment.getArticleId());*/
+        this.commentMapper.insert(comment);
         return Result.success(null);
     }
 

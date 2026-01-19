@@ -85,7 +85,7 @@ export default {
       this.getArticles()
     },
 
-    // ⭐⭐ 修改点 2：移除所有延迟逻辑，直接请求 ⭐⭐
+    //  修改点 2：移除所有延迟逻辑，直接请求
     handlePageChange(val) {
       this.innerPage.pageNumber = val
       // 立即回到顶部
@@ -113,7 +113,7 @@ export default {
           that.total = 0
         }
 
-        // ⭐⭐ 修改点 3：数据回来直接赋值，不等待 ⭐⭐
+        //  修改点 3：数据回来直接赋值，不等待
         if (newArticles && newArticles.length > 0) {
           that.articles = newArticles
           that.noData = false

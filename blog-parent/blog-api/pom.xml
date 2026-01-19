@@ -121,6 +121,11 @@
             <artifactId>jjwt</artifactId>
             <version>0.12.5</version>
         </dependency>
+        <!-- RabbitMQ -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
         <!-- javax.annotation-api -->
         <dependency>
             <groupId>javax.annotation</groupId>
