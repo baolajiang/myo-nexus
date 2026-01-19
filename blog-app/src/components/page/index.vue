@@ -183,8 +183,6 @@ export default {
 </script>
 
 <style scoped>
-/* 引入繁体衬线字体 */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Cinzel:wght@400;700&display=swap');
 
 .moon-library-container {
   position: relative; width: 100%; height: 100vh;

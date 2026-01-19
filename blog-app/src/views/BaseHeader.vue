@@ -590,8 +590,7 @@ export default {
 </style>
 
 <style scoped>
-/* 保持 Header 布局样式不变 */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Noto+Serif+SC:wght@400;700&display=swap');
+
 ul { list-style: none; margin: 0; padding: 0; }
 a { text-decoration: none; }
 .header-wrapper { position: fixed; top: 0; left: 0; right: 0; margin: 0 auto; z-index: 2000; background: rgba(255, 250, 245, 0.8); backdrop-filter: blur(10px); will-change: width, top, border-radius, background; font-family: 'Noto Serif SC', 'Playfair Display', serif; }

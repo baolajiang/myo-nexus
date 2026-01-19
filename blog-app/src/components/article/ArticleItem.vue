@@ -187,7 +187,6 @@ export default {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
 
 /* ================= 1. CSS 变量定义 (主题管控) ================= */
 

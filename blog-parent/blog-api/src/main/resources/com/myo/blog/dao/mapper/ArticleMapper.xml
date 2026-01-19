@@ -36,10 +36,10 @@
             </if>
             )
 
-            <if test="categoryId != null">
+            <if test="categoryId != null and categoryId != ''">
                 and category_id=#{categoryId}
             </if>
-            <if test="tagId != null">
+            <if test="tagId != null and tagId != ''">
                 and id in (select article_id from myo_article_tag where tag_id=#{tagId})
             </if>
             <if test="year != null and year.length>0 and month != null and month.length>0">
@@ -58,10 +58,10 @@
                 or `view_keys`=2
             </if>
             )
-            <if test="categoryId != null">
+            <if test="categoryId != null and categoryId != ''">
                 and category_id=#{categoryId}
             </if>
-            <if test="tagId != null">
+            <if test="tagId != null and tagId != ''">
                 and id in (select article_id from myo_article_tag where tag_id=#{tagId})
             </if>
             <if test="year != null and year.length>0 and month != null and month.length>0">

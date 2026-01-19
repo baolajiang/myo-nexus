@@ -38,7 +38,6 @@ export default {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Noto+Serif+SC:wght@300;500&display=swap');
 
 .luna-footer {
   /* ★★★ 关键修复：删除 width: 100% 或改为 auto ★★★ */

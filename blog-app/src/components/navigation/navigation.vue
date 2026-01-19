@@ -37,7 +37,7 @@
 			}
         },
 		props: {
-		  id: Number,
+		  id: String,
 		  content: String,
 		  imgicon: String,
 		  name: String,

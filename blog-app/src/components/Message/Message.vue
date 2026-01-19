@@ -124,8 +124,6 @@ export default {
 </script>
 
 <style scoped>
-/* 引入 Google Fonts 衬线字体，营造高级感 */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Noto+Serif+SC:wght@500;700&display=swap');
 
 .luna-message {
   position: fixed; /* 固定定位，悬浮在页面之上 */
