@@ -148,6 +148,7 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     public int updateUser(UserParam userParam) {
         String id = userParam.getId();
+
         if (StringUtils.isBlank(id)) {
             return 0;
         }
@@ -170,6 +171,7 @@ public class SysUserServiceImpl implements SysUserService {
             hasUpdate = true;
         }
         if (StringUtils.isNotBlank(userParam.getAvatar())) {
+            System.out.println("头像是："+userParam.getAvatar());
             updateWrapper.set(SysUser::getAvatar, userParam.getAvatar());
             hasUpdate = true;
         }

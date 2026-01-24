@@ -1,40 +1,42 @@
 package com.myo.blog.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.myo.blog.common.aop.RateLimit;
 import com.myo.blog.dao.mapper.ArticleMapper;
-import com.myo.blog.dao.pojo.Article;
 
 import com.myo.blog.entity.Result;
+import com.myo.blog.utils.R2UploadService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("upload")
 public class UploadController {
+    @Autowired
+    private R2UploadService r2UploadService;
 
+    @Value("${r2.domain}")
+    private String r2Domain;
 
-    // 1分钟20张，防恶意填满磁盘
-    @RateLimit(time = 60, count = 20, msg = "上传过于频繁")
     @PostMapping
-    public Result upload(@RequestParam("image") MultipartFile file){
-        //原始文件名称 比如 aa.png
-        String originalFilename = file.getOriginalFilename();
-        //唯一的文件名称
-        String fileName ="article_body/"+UUID.randomUUID().toString() + "." + StringUtils.substringAfterLast(originalFilename, ".");
-        //上传文件
-        // 降低自身应用服务器的带宽消耗
-        //System.out.println("唯一的文件名称1:"+fileName);
+    public Result upload(@RequestParam("image") MultipartFile file) {
+        try {
+            // 直接调用 Service 上传
+            String url = r2UploadService.uploadAvatar(file);
 
-        return Result.fail(20001,"上传失败");
+            // 返回成功结果，data 就是图片的 URL
+            return Result.success(url);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.fail(20001, "上传失败: " + e.getMessage());
+        }
     }
     @Autowired
     private ArticleMapper articleMapper;
@@ -88,23 +90,6 @@ public class UploadController {
 
         return Result.fail(20001,"上传失败");
     }
-    // 通用上传限制 1分钟10次
-    @RateLimit(time = 60, count = 10, msg = "上传过于频繁")
-    //修改头像
-    @PostMapping("upAvatar")
-    public Result upcover4(@RequestParam("image") MultipartFile file){
-        String originalFilename = file.getOriginalFilename();
-
-        String fileName ="avatar/"+ UUID.randomUUID().toString() + "." + StringUtils.substringAfterLast(originalFilename, ".");
 
 
-        //上传文件
-        // 降低自身应用服务器的带宽消耗
-
-
-
-
-        return Result.fail(20001,"上传失败");
-        //return Result.success(fileName);
-    }
 }

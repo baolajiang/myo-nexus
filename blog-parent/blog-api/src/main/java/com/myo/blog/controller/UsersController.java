@@ -8,6 +8,7 @@ import com.myo.blog.utils.HttpContextUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
@@ -17,6 +18,8 @@ public class UsersController {
 
     @Autowired
     private SysUserService sysUserService;
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate; // 注入 Redis
 
     ///users/currentUser
     @GetMapping("currentUser")
@@ -59,15 +62,24 @@ public class UsersController {
 
     //修改个人资料
     @PostMapping("updateUser")
-    public Result updateUser(@RequestBody UserParam userParam){
+    public Result updateUser(@RequestBody UserParam userParam,@RequestHeader("Authorization") String token){
         HttpServletRequest request = HttpContextUtils.getHttpServletRequest();
         String ip = IpUtils.getIpAddr(request);
         String account = userParam.getAccount();
+
         log.info("修改用户资料 - IP: {}, 账号: {}", ip, account);
 
         try {
             int i = sysUserService.updateUser(userParam);
-            log.info("用户资料修改成功 - IP: {}, 账号: {}, 影响行数: {}", ip, account, i);
+            if(i>0){
+                log.info("用户资料修改成功 - IP: {}, 账号: {}, 影响行数: {}", ip, account, i);
+                if (token != null) {
+                    // 删除 Redis 缓存
+                    redisTemplate.delete("TOKEN_" + token);
+                }
+            }
+
+
             return Result.success(i);
         } catch (Exception e) {
             log.error("用户资料修改异常 - IP: {}, 账号: {}, 异常信息: {}", ip, account, e.getMessage(), e);

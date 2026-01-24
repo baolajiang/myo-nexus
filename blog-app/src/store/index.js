@@ -12,6 +12,8 @@ export default new Vuex.Store({
     name: '',
     avatar: '',
     token: getToken(),
+    email: '',
+    mobilePhoneNumber: '',
     // 游客数据初始值（空的）
     guest: {
       uuid: '',
@@ -37,13 +39,19 @@ export default new Vuex.Store({
     SET_ID: (state, id) => {
       state.id = id
     },
-    // 🔥 核心逻辑：初始化游客身份
+    SET_EMAIL: (state, email) => {
+      state.email = email
+    },
+    SET_MOBILE_PHONE_NUMBER: (state, mobilePhoneNumber) => {
+      state.mobilePhoneNumber = mobilePhoneNumber
+    },
+    // 核心逻辑：初始化游客身份
     INIT_GUEST(state) {
       // 1. 先尝试从浏览器硬盘（localStorage）里拿数据
       const stored = localStorage.getItem('LUNA_GUEST_INFO');
 
       if (stored) {
-        // ✅ A情况：找到了！是老访客
+        // A情况：找到了！是老访客
         // 把硬盘里的数据解析出来，放回 Vuex 内存里
         try {
           state.guest = JSON.parse(stored);
@@ -54,7 +62,7 @@ export default new Vuex.Store({
         }
       }
 
-      // ❌ B情况：没找到（stored 为空），或者数据坏了
+      // B情况：没找到（stored 为空），或者数据坏了
       // 说明是第一次来，或者清空了缓存
       if (!state.guest.uuid) {
         console.log('是新朋友，正在生成身份...');
@@ -95,7 +103,7 @@ export default new Vuex.Store({
             commit('SET_TOKEN', data.data)
             setToken(data.data)
 
-            // 2. --- 新增：登录成功后，立刻获取用户信息 ---
+            // 2. --- 登录成功后，立刻获取用户信息 ---
             dispatch('getUserInfo').then(() => {
               resolve()
             }).catch(() => {
@@ -121,12 +129,16 @@ export default new Vuex.Store({
             commit('SET_NAME', data.data.nickname)
             commit('SET_AVATAR', data.data.avatar)
             commit('SET_ID', data.data.id)
+            commit('SET_EMAIL', data.data.email)
+            commit('SET_MOBILE_PHONE_NUMBER', data.data.mobilePhoneNumber)
             resolve(data)
           } else {
             commit('SET_ACCOUNT', '')
             commit('SET_NAME', '')
             commit('SET_AVATAR', '')
             commit('SET_ID', '')
+            commit('SET_EMAIL', '')
+            commit('SET_MOBILE_PHONE_NUMBER', '')
             removeToken()
             resolve(data)
           }
@@ -152,6 +164,8 @@ export default new Vuex.Store({
             commit('SET_NAME', '')
             commit('SET_AVATAR', '')
             commit('SET_ID', '')
+            commit('SET_EMAIL', '')
+            commit('SET_MOBILE_PHONE_NUMBER', '')
             removeToken()
             resolve()
           }
