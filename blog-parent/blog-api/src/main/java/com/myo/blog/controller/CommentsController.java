@@ -39,8 +39,8 @@ public class CommentsController {
         }
     }
 
-    // 防止刷评论，60秒内只能发1条
-    @RateLimit(time = 60, count = 1, msg = "评论发布太快了，请休息一下")
+    // 防止刷评论，10秒内只能发1条
+    @RateLimit(time = 10, count = 1, msg = "评论发布太快了，请休息一下")
     @PostMapping("create/change")
     public Result comment(@RequestBody CommentParam commentParam){
         HttpServletRequest request = HttpContextUtils.getHttpServletRequest();

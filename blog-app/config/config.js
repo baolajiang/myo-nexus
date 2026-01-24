@@ -19,8 +19,8 @@ const ENV_CONFIG = {
     backendBaseUrl: '/api',
     requestTimeout: 10000,
     tokenErrorCodes: [10003, 401, 403],
-    frontendUrl: 'http://myo.pub',
-    adminUrl: 'http://admin.myo.pub'
+    frontendUrl: 'https://myo.pub',
+    adminUrl: 'https://admin.myo.pub'
   }
 }
 

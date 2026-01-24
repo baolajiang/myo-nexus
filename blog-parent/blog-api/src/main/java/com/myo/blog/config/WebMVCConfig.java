@@ -20,7 +20,7 @@ public class WebMVCConfig implements WebMvcConfigurer {
         /* 解决跨域问题 **/
         registry.addMapping("/**")
                 // 允许的源（域名）
-                .allowedOriginPatterns("https://*.myo.pub", "http://localhost:48082","http://localhost:48182")
+                .allowedOrigins("https://myo.pub", "https://admin.myo.pub", "http://localhost:48082", "http://localhost:48182")
                 // 允许的请求方法
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 // 允许的请求头
