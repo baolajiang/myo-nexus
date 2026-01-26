@@ -12,6 +12,13 @@ public interface ArticleService {
      */
     Result listArticle(PageParams pageParams,String token);
     /**
+     * 根据作者ID查询文章列表
+     * @param pageParams 分页参数
+     * @param authorId 作者ID
+     * @return
+     */
+    Result listArticlesByAuthor(PageParams pageParams, String authorId);
+    /**
      * 查询一共多少数据
      */
     Result listArticleCount(String token);

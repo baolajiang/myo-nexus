@@ -43,7 +43,7 @@ public class SysUserServiceImpl implements SysUserService {
 
     @Override
     public UserVo findUserVoById(String id) { // Long -> String
-        // 处理特殊情况，比如评论区回复父级是 "0" 的情况
+
         if(id == null || "0".equals(id)){
             return new UserVo();
         }

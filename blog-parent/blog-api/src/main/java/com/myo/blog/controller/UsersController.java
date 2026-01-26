@@ -42,6 +42,7 @@ public class UsersController {
         }
     }
 
+
     //根据用户名查询账号信息
     @PostMapping("queryUserByAccount")
     public Result findUserByAccount(@RequestBody UserParam user){
@@ -58,6 +59,13 @@ public class UsersController {
             log.error("用户信息查询异常 - IP: {}, 账号: {}, 异常信息: {}", ip, account, e.getMessage(), e);
             return Result.fail(500, "系统异常");
         }
+    }
+    //根据用户id查询用户公开信息
+    @PostMapping("user/public/{id}")
+    public Result getUserPublicInfo(@PathVariable String id) {
+        // 调用 Service 获取简单的用户信息（头像、昵称、签名）
+        // 注意：不要返回密码、手机号等敏感信息！
+        return new Result(true, 200, "查询成功", sysUserService.findUserVoById(id));
     }
 
     //修改个人资料

@@ -46,6 +46,7 @@ public class WebMVCConfig implements WebMvcConfigurer {
                 .addPathPatterns("/test")
                 .addPathPatterns("/comments/create/change")
                 .addPathPatterns("/articles/publish")
+                .addPathPatterns("/articles/my")
                 .addPathPatterns("/admin/**") // 保护后台接口
                 .addPathPatterns("/login/ticket"); // 保护获取票据的接口！
     }

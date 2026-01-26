@@ -230,12 +230,13 @@
       publishComment() {
         let that = this
 
-      /*  if (!that.comment.content) {
-
-          return that.open5();
+        // 添加非空校验
+        if (!that.comment.content || !that.comment.content.trim()) {
+          that.$myMessage({type: 'warning', content: '评论内容不能为空'})
+          return
         }
-		return that.open5(); */
-       that.comment.article.id = that.article.id
+
+        that.comment.article.id = that.article.id
         let parms = {articleId:that.article.id,content:that.comment.content}
         publishComment(parms,this.$store.state.token).then(data => {
           if(data.success){
@@ -243,15 +244,14 @@
               type: 'success', content: '评论成功', showClose: true
             })
             that.comment.content = ''
-			that. getCommentsByArticle()//刷新评论区
-
+			      that. getCommentsByArticle()//刷新评论区
           }else{
                that.$myMessage({type: 'error', content: data.msg, showClose: true})
           }
 
         }).catch(error => {
           if (error !== 'error') {
-            that.$myMessage({type: 'error', content: '评论失败', showClose: true})
+            that.$myMessage({type: 'error', content: error, showClose: true})
           }
         })
       },

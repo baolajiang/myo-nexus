@@ -37,7 +37,11 @@
               <div class="user-trigger" @click.stop="togglePanel('user')">
                 <div class="avatar-wrapper"><el-avatar :size="36" :src="user.avatar || require('@/assets/img/default_avatar.png')" class="luna-avatar"></el-avatar><div class="avatar-glow"></div></div>
               </div>
-              <transition name="pop-fade"><div v-if="activePanel === 'user'" class="custom-popover-panel" @click.stop><div class="user-card-content" ref="userPanel"><div class="uc-header"><div class="uc-avatar-box"><el-avatar :size="70" :src="user.avatar || require('@/assets/img/default_avatar.png')" class="uc-avatar"></el-avatar><div class="uc-avatar-border"></div></div><div class="uc-name">{{ user.nickname || 'Unknown User' }}</div><div class="uc-email">{{ user.email || 'Welcome back to the manor' }}</div><div class="uc-manage-btn" @click="openPersonalCenter">個人中心</div></div><div class="uc-divider"></div><div class="uc-menu"><div class="uc-menu-item" @click="navTo('/articles')"><i class="el-icon-document"></i> <span>我的文章</span></div><div class="uc-menu-item" @click="jumpToAdmin"><i class="el-icon-setting"></i> <span>系統設置</span></div><div class="uc-menu-item logout-item" @click="logout"><i class="el-icon-switch-button"></i> <span>登出帳戶</span></div></div><div class="uc-footer-deco"><span>☾</span> LUNA SYSTEM <span>❀</span></div></div></div></transition>
+              <transition name="pop-fade"><div v-if="activePanel === 'user'" class="custom-popover-panel" @click.stop><div class="user-card-content" ref="userPanel"><div class="uc-header"><div class="uc-avatar-box"><el-avatar :size="70" :src="user.avatar || require('@/assets/img/default_avatar.png')" class="uc-avatar"></el-avatar><div class="uc-avatar-border"></div></div><div class="uc-name">{{ user.nickname || 'Unknown User' }}</div><div class="uc-email">{{ user.email || 'Welcome back to the manor' }}</div><div class="uc-manage-btn" @click="openPersonalCenter">個人中心</div></div><div class="uc-divider"></div><div class="uc-menu">
+                <div class="uc-menu-item" @click="goToMySpace">
+                  <i class="el-icon-document"></i> <span>我的文章</span>
+                </div>
+                <div class="uc-menu-item" @click="jumpToAdmin"><i class="el-icon-setting"></i> <span>系統設置</span></div><div class="uc-menu-item logout-item" @click="logout"><i class="el-icon-switch-button"></i> <span>登出帳戶</span></div></div><div class="uc-footer-deco"><span>☾</span> LUNA SYSTEM <span>❀</span></div></div></div></transition>
             </template>
           </div>
           <div class="mobile-toggle hidden-sm-and-up" @click="toggleMobileMenu"><div class="hamburger" :class="{ 'is-active': isMobileMenuOpen }"><span class="line line-1"></span><span class="line line-2"></span><span class="line line-3"></span></div></div>
@@ -103,8 +107,21 @@
         <div class="pro-info-container">
           <div class="pro-avatar-box">
             <el-avatar :size="84" :src="form.avatar" class="pro-avatar"></el-avatar>
-            <transition name="fade"><div v-show="isEditing" class="pro-avatar-camera" @click="handleAvatarClick"><i class="el-icon-camera-solid"></i></div></transition>
+
+            <div class="pro-avatar-action" @click="handleAvatarAction">
+              <i :class="isEditing ? 'el-icon-camera-solid' : 'el-icon-zoom-in'"></i>
+            </div>
           </div>
+
+          <el-dialog
+            :visible.sync="previewVisible"
+            :lock-scroll="false"
+            append-to-body
+            custom-class="avatar-preview-dialog"
+            width="400px"
+          >
+            <img :src="form.avatar" style="width: 100%; border-radius: 4px;">
+          </el-dialog>
 
           <div class="pro-identity center">
             <div class="name-row">
@@ -112,17 +129,7 @@
                 <input v-if="isEditing" v-model="form.nickname" class="name-input" placeholder="请输入昵称" ref="nameInput">
                 <span v-else class="pro-name">{{ form.nickname || '未命名' }}</span>
               </div>
-              <div class="gender-wrapper">
-                <el-popover v-if="isEditing" placement="bottom" trigger="click" popper-class="gender-popper">
-                  <div class="gender-options">
-                    <div class="g-opt male" @click="form.sex = 1"><i class="el-icon-male"></i> 男</div>
-                    <div class="g-opt female" @click="form.sex = 0"><i class="el-icon-female"></i> 女</div>
-                    <div class="g-opt secret" @click="form.sex = 2"><i class="el-icon-lock"></i> 保密</div>
-                  </div>
-                  <i slot="reference" class="sex-icon pointer" :class="getGenderClass(form.sex)"></i>
-                </el-popover>
-                <i v-else class="sex-icon" :class="getGenderClass(form.sex)"></i>
-              </div>
+
             </div>
             <div class="pro-uid">UID: {{ form.account || '000000' }}</div>
           </div>
@@ -179,6 +186,7 @@ export default {
   props: { activeIndex: { type: String, default: '/' } },
   data() {
     return {
+      previewVisible: false, // 控制预览弹窗
       isScrolled: false, ticking: false, isMobileMenuOpen: false,
       activePanel: null, guestTab: 'info',
       showEditModal: false, editField: '', editValue: '',
@@ -322,6 +330,7 @@ export default {
         if (this.uploadFile) {
           const formData = new FormData();
           formData.append('image', this.uploadFile);
+          //await 关键字起到了关键作用，它的意思就是 只有等这一行执行完，拿到结果了，才会继续执行下一行代码。
           const uploadRes = await upload(formData);
           if (uploadRes.success) {
             this.form.avatar = uploadRes.data;
@@ -380,12 +389,31 @@ export default {
     closeMobileMenu() { this.isMobileMenuOpen = false; document.body.style.overflow = ''; if (this.isScrolled) this.animateToCapsule(); },
     navTo(path) { this.closeAllPanels(); this.$router.push({ path }); this.closeMobileMenu(); },
     jumpToAdmin() { this.closeAllPanels(); const token = this.$store.state.token; if (!token) { this.$myMessage.error('請先登入'); return; } const adminBaseUrl = APP_CONFIG.adminUrl; getTicket(token).then(res => { if (res.success) { window.open(`${adminBaseUrl}?ticket=${res.data}`, '_blank'); } else { this.$myMessage.error(res.msg || '无法获取跳转凭证'); } }).catch(err => { console.error(err); this.$myMessage.error('跳转失败'); }); },
+    goToMySpace() {
+      // 获取当前登录用户 ID
+      const myId = this.$store.state.id;
+      if (myId) {
+        this.$router.push(`/space/${myId}`);
+      } else {
+        this.$router.push('/login');
+      }
+    },
     logoutAndClose() { this.$store.dispatch('logout').then(() => { this.$router.push({path: '/'}); this.closeMobileMenu(); }); },
     logout() { this.closeAllPanels(); this.$store.dispatch('logout').then(() => { this.$router.push({path: '/'}) }) },
     login() { this.closeAllPanels(); this.$router.push({path: '/login'}) },
     register() { this.closeAllPanels(); this.closeMobileMenu(); this.$router.push({ path: '/register' }) },
     enterMobileMenu(el, done) { gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.4 }); const items = el.querySelectorAll('.mobile-item'); gsap.fromTo(items, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.05, ease: "power2.out", onComplete: done }); gsap.fromTo(el.querySelector('.menu-bg-moon'), { rotation: -30, opacity: 0, scale: 0.8 }, { rotation: 0, opacity: 0.1, scale: 1, duration: 1, ease: "power2.out" }); },
     leaveMobileMenu(el, done) { gsap.to(el, { opacity: 0, duration: 0.3, onComplete: done }); },
+    // 统一处理头像点击动作
+    handleAvatarAction() {
+      if (this.isEditing) {
+        // 编辑模式：触发文件选择
+        this.$refs.avatarInput.click();
+      } else {
+        // 查看模式：打开预览大图
+        this.previewVisible = true;
+      }
+    },
   }
 }
 </script>
@@ -561,7 +589,7 @@ a { text-decoration: none; }
 .pro-cover { height: 160px; position: relative; overflow: hidden; background: #333; }
 .cover-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; }
 .cover-mask { position: absolute; bottom: 0; left: 0; width: 100%; height: 60px; background: linear-gradient(to top, rgba(0,0,0,0.4), transparent); }
-.pro-close-btn { position: absolute; top: 15px; right: 15px; width: 32px; height: 32px; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; z-index: 20; }
+.pro-close-btn { position: absolute; top: 5px; right: 5px; width: 32px; height: 32px; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; z-index: 20; }
 .pro-close-btn:hover { background: rgba(0,0,0,0.6); transform: rotate(90deg); }
 
 /* 3. 信息容器 */
@@ -592,10 +620,7 @@ a { text-decoration: none; }
   display: flex; align-items: center; justify-content: center;
   height: 100%;
 }
-.gender-wrapper {
-  display: flex; align-items: center;
-  margin-left: 8px; /* 间距给在这里 */
-}
+
 
 /* 昵称文本 */
 .pro-name {
@@ -753,4 +778,75 @@ a { text-decoration: none; }
 .g-opt.male i { color: #409EFF; }
 .g-opt.female i { color: #F56C6C; }
 .g-opt.secret i { color: #909399; }
+
+/* 右下角悬浮操作钮 (相机 or 放大镜) */
+.pro-avatar-action {
+  position: absolute; bottom: 0; right: 0;
+  width: 28px; height: 28px;
+  background: #d4af37; border-radius: 50%; border: 2px solid #fff;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 14px; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  transition: all 0.3s;
+  z-index: 10;
+
+  /* 默认透明度0 (隐藏)，鼠标放上去才显示，或者编辑模式下常驻 */
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+/* 两种情况下显示图标：
+   1. 鼠标悬停在头像盒子上 (.pro-avatar-box:hover)
+   2. 处于编辑模式时 (.is-editing) -> 如果你想编辑模式常亮，加上这个类判断
+*/
+.pro-avatar-box:hover .pro-avatar-action,
+.is-editing .pro-avatar-action {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.pro-avatar-action:hover {
+  transform: scale(1.1);
+  background: #c5a028;
+}
+
+/* ================== 预览弹窗专用样式 ================== */
+
+/* 1. 弹窗本体去背景、去阴影 */
+.avatar-preview-dialog {
+  background: transparent !important;
+  box-shadow: none !important;
+  /* 居中显示 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 2. 隐藏头部 (那个 X 号和标题) */
+.avatar-preview-dialog .el-dialog__header {
+  display: none;
+}
+
+/* 3. 内容区去内边距 */
+.avatar-preview-dialog .el-dialog__body {
+  padding: 0 !important;
+  background: transparent !important;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* 4. 图片样式 */
+.preview-img {
+  width: 100%;
+  max-width: 350px; /* 限制最大宽度 */
+  border-radius: 8px; /* 圆角 */
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* 图片加个阴影更立体 */
+  cursor: zoom-out; /* 鼠标变成缩小图标 */
+  transition: transform 0.3s;
+}
+.preview-img:hover {
+  transform: scale(1.02); /* 悬停微微放大 */
+}
+
 </style>

@@ -34,19 +34,16 @@ service.interceptors.response.use(
 
     //0 为成功状态
     if (res.code !== 200) {
-
       //90001 Session超时
       if (res.code === 90001) {
         return Promise.reject('error');
       }
-
       //20001 用户未登录
       if (res.code === 90002) {
-
         Message({
           type: 'warning',
           showClose: true,
-          message: '未登录或登录超时，请重新登录哦'
+          message: '未登录，请登录在进行操作哦'
         })
 
         return Promise.reject('error');
@@ -65,7 +62,7 @@ service.interceptors.response.use(
 
       return Promise.reject(res.msg);
     } else {
-      return response.data;
+      return response.data;// 返回完整的响应对象
     }
   },
   error => {

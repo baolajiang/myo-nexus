@@ -56,8 +56,7 @@ public class ArticleServiceImpl implements ArticleService {
 
     @Override
     public Result listArticle(PageParams pageParams, String token) {
-        System.out.println("来了");
-        System.out.println("看看参数："+pageParams);
+
         // 1. 建立分頁物件
         Page<Article> page = new Page<>(pageParams.getPage(), pageParams.getPageSize());
 
@@ -94,6 +93,46 @@ public class ArticleServiceImpl implements ArticleService {
 
         return Result.success(resultData);
     }
+
+    @Override
+    public Result listArticlesByAuthor(PageParams pageParams, String authorId) {
+        // 1. 分页对象
+        Page<Article> page = new Page<>(pageParams.getPage(), pageParams.getPageSize());
+
+        // 2. 查询条件
+        LambdaQueryWrapper<Article> queryWrapper = new LambdaQueryWrapper<>();
+        // 日志证明这一行是生效的，它过滤了作者
+        queryWrapper.eq(Article::getAuthorId, authorId);
+        // 按时间倒序
+        queryWrapper.orderByDesc(Article::getCreateDate);
+
+        // 3. 执行查询
+        articleMapper.selectPage(page, queryWrapper);
+
+        // 4. 转换 VO
+        List<Article> records = page.getRecords();
+
+        // isAuthor 传 false！
+        // 既然查的是“我的文章”，作者肯定是我自己，不需要再去数据库查一遍 User 表（避免了 N+1 问题和密码泄露风险）
+        List<ArticleVo> articleVoList = copyList(records, true, false);
+
+        // 手动填充作者信息
+        // 从 ThreadLocal 获取当前登录用户信息（比查库快）
+        SysUser sysUser = UserThreadLocal.get();
+        String nickname = (sysUser != null) ? sysUser.getNickname() : "Unknown";
+
+        for (ArticleVo articleVo : articleVoList) {
+            articleVo.setAuthor(nickname);
+        }
+
+        // 返回结构要和前端分页匹配 (带上 total)
+        Map<String, Object> resultData = new HashMap<>();
+        resultData.put("articles", articleVoList);
+        resultData.put("total", page.getTotal());
+
+        return Result.success(resultData);
+    }
+
 
     @Override
     public Result listArticleCount(String token) {

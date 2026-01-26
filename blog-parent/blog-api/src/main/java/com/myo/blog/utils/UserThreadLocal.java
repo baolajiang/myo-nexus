@@ -1,7 +1,7 @@
 package com.myo.blog.utils;
 
 import com.myo.blog.dao.pojo.SysUser;
-
+// 线程变量隔离，用于存储当前登录用户的信息
 public class UserThreadLocal {
 
     private UserThreadLocal(){}

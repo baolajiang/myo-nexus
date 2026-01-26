@@ -86,6 +86,11 @@ const router = new Router({
           path: '/register',
           component: r => require.ensure([], () => r(require('@/views/Login')), 'register')
         },
+        {
+          path: '/space/:uid',
+          component: () => import('@/views/space/BlogSpace.vue'),
+          meta: { title: '个人空间' }
+        }
 
 
       ]

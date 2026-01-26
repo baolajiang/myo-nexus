@@ -94,3 +94,21 @@ export function getListArticleCount(token) {
     method: 'post'
   })
 }
+
+// 获取我的文章
+export function getMyArticles(page) {
+  return request({
+    url: '/articles/my', // 对应后端的接口地址
+    method: 'post',
+    data: page
+  })
+}
+
+// src/api/article.js
+export function getArticlesByAuthor(query) {
+  return request({
+    url: '/articles/author', // 假设你后端把 my 改成了通用的 author 或者你复用之前的
+    method: 'post',
+    data: query
+  })
+}

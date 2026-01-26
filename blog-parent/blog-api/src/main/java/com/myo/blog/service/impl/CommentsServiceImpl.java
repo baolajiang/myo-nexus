@@ -60,8 +60,13 @@ public class CommentsServiceImpl implements CommentsService {
     @Override
     public Result comment(CommentParam commentParam) {
         SysUser sysUser = UserThreadLocal.get();
-
-
+        // 添加非空和长度校验
+        if (commentParam.getContent() == null || commentParam.getContent().trim().isEmpty()) {
+            return Result.fail(400, "评论内容不能为空");
+        }
+        if (commentParam.getContent().trim().length() > 500) { // 限制最大长度
+            return Result.fail(400, "评论内容不能超过500字");
+        }
         Comment comment = new Comment();
         comment.setArticleId(commentParam.getArticleId());
         comment.setAuthorId(sysUser.getId());
