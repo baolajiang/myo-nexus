@@ -40,7 +40,7 @@
         <div class="seal-ring inner"></div>
         <div class="avatar-core">
           <img
-            src="/static/img/露娜切露德7.png"
+            src="https://cos.myo.pub/others/cc7149fdbde94f55a82533c57603d710.jpg"
             class="user-img"
             alt="Avatar"
             @error="handleImgError"

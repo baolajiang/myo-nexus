@@ -87,10 +87,10 @@ const router = new Router({
           component: r => require.ensure([], () => r(require('@/views/Login')), 'register')
         },
         {
-          path: '/space/:uid',
-          component: () => import('@/views/space/BlogSpace.vue'),
-          meta: { title: '个人空间' }
-        }
+          path: '/my-articles',
+          component: () => import('@/views/my/MyArticles'), // 确保路径对应
+          meta: { title: '我的文章' }
+        },
 
 
       ]
