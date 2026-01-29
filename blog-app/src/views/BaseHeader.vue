@@ -38,7 +38,7 @@
                 <div class="avatar-wrapper"><el-avatar :size="36" :src="user.avatar || require('@/assets/img/default_avatar.png')" class="luna-avatar"></el-avatar><div class="avatar-glow"></div></div>
               </div>
               <transition name="pop-fade"><div v-if="activePanel === 'user'" class="custom-popover-panel" @click.stop><div class="user-card-content" ref="userPanel"><div class="uc-header"><div class="uc-avatar-box"><el-avatar :size="70" :src="user.avatar || require('@/assets/img/default_avatar.png')" class="uc-avatar"></el-avatar><div class="uc-avatar-border"></div></div><div class="uc-name">{{ user.nickname || 'Unknown User' }}</div><div class="uc-email">{{ user.email || 'Welcome back to the manor' }}</div><div class="uc-manage-btn" @click="openPersonalCenter">個人中心</div></div><div class="uc-divider"></div><div class="uc-menu">
-                <div class="uc-menu-item" @click="navTo('/my-articles')">
+                <div class="uc-menu-item" @click="navTo('/space/' + user.id)">
                   <i class="el-icon-document"></i> <span>我的文章</span>
                 </div>
                 <div class="uc-menu-item" @click="jumpToAdmin"><i class="el-icon-setting"></i> <span>系統設置</span></div><div class="uc-menu-item logout-item" @click="logout"><i class="el-icon-switch-button"></i> <span>登出帳戶</span></div></div><div class="uc-footer-deco"><span>☾</span> LUNA SYSTEM <span>❀</span></div></div></div></transition>
@@ -230,7 +230,8 @@ export default {
     user() {
       let login = this.$store.state.account ? this.$store.state.account.length != 0 : false
       let avatar = this.$store.state.avatar; let nickname = this.$store.state.name; let email = this.$store.state.email
-      return { login, avatar, nickname, email }
+      let id = this.$store.state.id
+      return { login, avatar, nickname, email, id }
     },
     guest() { return this.$store.state.guest; },
     guestAvatarDisplay() {
@@ -387,7 +388,9 @@ export default {
     animateToFull(immediate = false) { const duration = immediate ? 0 : 0.6; gsap.to(this.$refs.headerWrapper, { top: 0, width: '100%', maxWidth: '100%', height: '65px', borderRadius: 0, backgroundColor: 'rgba(255, 250, 245, 0.8)', border: 'none', borderBottom: '1px solid rgba(212, 175, 55, 0.1)', boxShadow: 'none', duration: duration, ease: 'power3.out' }); gsap.to(this.$refs.goldLine, { opacity: 1, duration: 0.3 }); },
     toggleMobileMenu() { this.isMobileMenuOpen = !this.isMobileMenuOpen; if (this.isMobileMenuOpen) { this.animateToFull(); document.body.style.overflow = 'hidden'; } else { document.body.style.overflow = ''; if (this.isScrolled) this.animateToCapsule(); } },
     closeMobileMenu() { this.isMobileMenuOpen = false; document.body.style.overflow = ''; if (this.isScrolled) this.animateToCapsule(); },
-    navTo(path) { this.closeAllPanels(); this.$router.push({ path }); this.closeMobileMenu(); },
+    navTo(path) {
+      console.log(path)
+      this.closeAllPanels(); this.$router.push({ path }); this.closeMobileMenu(); },
     jumpToAdmin() { this.closeAllPanels(); const token = this.$store.state.token; if (!token) { this.$myMessage.error('請先登入'); return; } const adminBaseUrl = APP_CONFIG.adminUrl; getTicket(token).then(res => { if (res.success) { window.open(`${adminBaseUrl}?ticket=${res.data}`, '_blank'); } else { this.$myMessage.error(res.msg || '无法获取跳转凭证'); } }).catch(err => { console.error(err); this.$myMessage.error('跳转失败'); }); },
     logoutAndClose() { this.$store.dispatch('logout').then(() => { this.$router.push({path: '/'}); this.closeMobileMenu(); }); },
     logout() { this.closeAllPanels(); this.$store.dispatch('logout').then(() => { this.$router.push({path: '/'}) }) },

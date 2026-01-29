@@ -96,9 +96,9 @@ export function getListArticleCount(token) {
 }
 
 // 获取我的文章
-export function getMyArticles(page) {
+export function getMyArticles(page,id) {
   return request({
-    url: '/articles/my', // 对应后端的接口地址
+    url: `/articles/space/${id}`, // 对应后端的接口地址
     method: 'post',
     data: page
   })

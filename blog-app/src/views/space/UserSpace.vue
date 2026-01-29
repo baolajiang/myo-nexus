@@ -57,7 +57,8 @@ export default {
       loading: false,
       total: 0,
       pageSize: 5,
-      currentPage: 1
+      currentPage: 1,
+      userId: this.$route.params.id, // 获取路由参数中的用户ID
     }
   },
   mounted() {
@@ -68,9 +69,9 @@ export default {
       this.loading = true;
       let params = {
         page: this.currentPage,
-        pageSize: this.pageSize
+        pageSize: this.pageSize,
       };
-      getMyArticles(params).then(res => {
+      getMyArticles(params,this.userId).then(res => {
         if (res.success) {
           this.articles = res.data.articles;
           this.total = res.data.total;

@@ -87,8 +87,8 @@ const router = new Router({
           component: r => require.ensure([], () => r(require('@/views/Login')), 'register')
         },
         {
-          path: '/my-articles',
-          component: () => import('@/views/my/MyArticles'), // 确保路径对应
+          path: '/space/:id',
+          component: () => import('@/views/space/UserSpace'), // 确保路径对应
           meta: { title: '我的文章' }
         },
 

@@ -38,14 +38,10 @@ public class ArticleController {
         return articleService.listArticle(pageParams,token);
     }
 
-    @PostMapping("my")
-    public Result myArticles(@RequestBody PageParams pageParams) {
-        // 1. 获取当前登录用户 ID (从 ThreadLocal)
-        SysUser sysUser = UserThreadLocal.get();
-
-        // 2. 调用 Service 查询，强制加上 author_id = sysUser.getId() 的条件
-        // 这里复用你现有的 listArticle 逻辑，但要传 authorId 进去过滤
-        return articleService.listArticlesByAuthor(pageParams, sysUser.getId());
+    @PostMapping("space/{id}")
+    public Result SpaceArticles(@RequestBody PageParams pageParams,@PathVariable("id") String id) {
+        System.out.println("看看id："+id);
+        return articleService.listArticlesByAuthor(pageParams,id);
     }
 
     //查询mac

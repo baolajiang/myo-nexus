@@ -16,6 +16,7 @@ import com.myo.blog.entity.params.PageParams;
 import com.myo.blog.utils.ArticleUtils;
 import com.myo.blog.utils.JWTUtils;
 import com.myo.blog.utils.UserThreadLocal;
+import io.lettuce.core.ScriptOutputType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -101,7 +102,7 @@ public class ArticleServiceImpl implements ArticleService {
 
         // 2. 查询条件
         LambdaQueryWrapper<Article> queryWrapper = new LambdaQueryWrapper<>();
-        // 日志证明这一行是生效的，它过滤了作者
+        System.out.println("看看authorId："+authorId);
         queryWrapper.eq(Article::getAuthorId, authorId);
         // 按时间倒序
         queryWrapper.orderByDesc(Article::getCreateDate);
