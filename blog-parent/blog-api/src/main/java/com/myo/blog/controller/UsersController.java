@@ -21,7 +21,7 @@ public class UsersController {
     @Autowired
     private RedisTemplate<String, String> redisTemplate; // 注入 Redis
 
-    ///users/currentUser
+    //根据token查询当前用户信息
     @GetMapping("currentUser")
     public Result currentUser(@RequestHeader("Authorization") String token){
         HttpServletRequest request = HttpContextUtils.getHttpServletRequest();
@@ -40,6 +40,12 @@ public class UsersController {
             log.error("查询当前用户信息异常 - IP: {}, 异常信息: {}", ip, e.getMessage(), e);
             return Result.fail(500, "系统异常");
         }
+    }
+    @GetMapping("info/{id}")
+    public Result getUserPublicInfo(@PathVariable("id") String id) {
+        System.out.println(id);
+        System.out.println("根据ID查询用户信息: " + sysUserService.findUserVoById(id));
+        return Result.success(sysUserService.findUserVoById(id));
     }
 
     //根据用户名查询账号信息

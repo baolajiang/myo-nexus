@@ -26,11 +26,10 @@ public class UploadController {
     private String r2Domain;
 
     @PostMapping
-    public Result upload(@RequestParam("image") MultipartFile file) {
+    public Result upload(@RequestParam("image") MultipartFile file,@RequestParam(value = "path", defaultValue = "common") String path) {
         try {
             // 直接调用 Service 上传
-            String url = r2UploadService.uploadAvatar(file);
-
+            String url = r2UploadService.uploadAvatar(file,path);
             // 返回成功结果，data 就是图片的 URL
             return Result.success(url);
         } catch (Exception e) {

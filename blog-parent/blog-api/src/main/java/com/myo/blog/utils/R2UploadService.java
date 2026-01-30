@@ -55,13 +55,13 @@ public class R2UploadService {
      * @param file 前端传来的文件
      * @return 文件的完整访问 URL
      */
-    public String uploadAvatar(MultipartFile file) throws IOException {
+    public String uploadAvatar(MultipartFile file,String path) throws IOException {
         // 1. 获取原始文件名后缀 (如 .png, .jpg)
         String originalFilename = file.getOriginalFilename();
         String suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
 
         // 2. 生成唯一文件名 (防止覆盖)，格式: avatar/uuid.png
-        String key = "avatar/" + UUID.randomUUID().toString() + suffix;
+        String key = path+"/"+ UUID.randomUUID().toString() + suffix;
 
         // 3. 构建上传请求
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()

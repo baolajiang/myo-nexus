@@ -75,6 +75,7 @@
         getHotArtices().then(data => {
           that.hotArticles = data.data
         }).catch(error => {
+          console.log(error)
           if (error !== 'error') {
             that.$myMessage({type: 'error', content: '最热文章加载失败!', duration: 3000})
           }

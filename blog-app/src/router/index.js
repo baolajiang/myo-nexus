@@ -71,6 +71,11 @@ const router = new Router({
           component: r => require.ensure([], () => r(require('@/views/blog/BlogView')), 'blogview')
         },
         {
+          path: '/space/:id',
+          component: () => import('@/views/space/UserSpace'),
+          meta: { title: '我的文章' }
+        },
+        {
           path: '/:type/all',
           component: r => require.ensure([], () => r(require('@/views/blog/BlogAllCategoryTag')), 'blogallcategorytag')
         },
@@ -86,11 +91,7 @@ const router = new Router({
           path: '/register',
           component: r => require.ensure([], () => r(require('@/views/Login')), 'register')
         },
-        {
-          path: '/space/:id',
-          component: () => import('@/views/space/UserSpace'), // 确保路径对应
-          meta: { title: '我的文章' }
-        },
+
 
 
       ]

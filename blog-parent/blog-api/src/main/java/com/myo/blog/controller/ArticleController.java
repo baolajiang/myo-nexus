@@ -81,7 +81,11 @@ public class ArticleController {
         return articleService.listarticles();
     }
 
-
+    /**
+     * 查看文章详情
+     * @param articleId
+     * @return
+     */
     @PostMapping("view/{id}")
     public Result findArticleById(@PathVariable("id") String articleId, @RequestHeader("Authorization") String token){
         // 将 token 传递给 service 层，用于权限验证

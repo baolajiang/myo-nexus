@@ -331,6 +331,7 @@ export default {
         if (this.uploadFile) {
           const formData = new FormData();
           formData.append('image', this.uploadFile);
+          formData.append('path', 'avatar');
           //await 关键字起到了关键作用，它的意思就是 只有等这一行执行完，拿到结果了，才会继续执行下一行代码。
           const uploadRes = await upload(formData);
           if (uploadRes.success) {
