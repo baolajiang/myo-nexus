@@ -25,7 +25,13 @@
         @mouseleave.stop="setHoverLevel(1)"
       >
         <div class="img-mask">
-          <img :src="Imgview(index)" class="luna-img" ref="img" alt="cover">
+          <img :src="ImageView()"
+               class="luna-img"
+               ref="img"
+               alt="cover"
+               loading="lazy"
+               decoding="async"
+          >
         </div>
         <div class="gold-sheen" ref="sheen"></div>
         <div class="gold-border-overlay" ref="borderOverlay"></div>
@@ -110,7 +116,9 @@ export default {
         // 长ID保持原路由
         this.$router.push({ path: `/view/${id}` })
       } },
-    Imgview(index) { return "https://www.loliapi.com/acg/?uuid=" + (index + 900) },
+    ImageView() {
+      return this.cover
+    },
 
     setHoverLevel(level) {
       this.hoverLevel = level;

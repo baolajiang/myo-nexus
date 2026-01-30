@@ -32,4 +32,6 @@ public class ArticleParam {
     private String title;
 
     private String cover;
+
+    private Integer viewKeys;// 文章可视度 (1:公开, 2:私密, 3:粉丝可见 - 具体定义看业务)
 }

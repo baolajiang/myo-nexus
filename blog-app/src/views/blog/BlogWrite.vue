@@ -2,72 +2,130 @@
   <div id="write" v-title :data-title="title">
     <el-container class="write-container">
 
-      <el-header class="write-header" height="60px">
+      <el-header class="write-header" height="64px">
         <div class="header-left">
-          <div class="back-btn" @click="cancel">
-            <i class="el-icon-arrow-left"></i>
-            <span>返回</span>
+          <div class="back-home-btn" @click="cancel">
+            <i class="el-icon-house"></i>
+            <span>首頁</span>
           </div>
-          <span class="header-title-text">写文章</span>
+          <div class="divider"></div>
+          <span class="header-status">稿件管理 / 寫文章</span>
         </div>
 
         <div class="header-right">
-          <el-avatar :size="32" :src="userAvatar" class="header-avatar"></el-avatar>
-          <el-button type="primary" size="medium" round @click="publishShow">发布文章</el-button>
+          <div class="save-status">已自動保存</div>
+          <el-button type="primary" class="b-publish-btn" size="medium" round @click="publishShow">發佈文章</el-button>
+          <el-avatar :size="36" :src="userAvatar" class="header-avatar"></el-avatar>
         </div>
       </el-header>
 
       <el-main class="write-main">
-        <div class="write-content">
-          <div class="title-input-wrapper">
+        <div class="write-card">
+          <div class="title-section">
             <el-input
               type="textarea"
               autosize
-              placeholder="请输入标题..."
+              placeholder="請輸入一個吸引人的標題吧~"
               v-model="articleForm.title"
               maxlength="100"
-              class="title-input"
+              class="b-title-input"
             ></el-input>
+            <div class="title-underline"></div>
           </div>
 
-          <div class="editor-wrapper">
+          <div class="editor-section">
             <mavon-editor
               ref="md"
               v-model="articleForm.content"
-              class="me-editor"
+              class="b-editor"
               :ishljs="true"
-              placeholder="开始你的创作..."
+              placeholder="請開始你的表演..."
               @imgAdd="imgAdd"
-              style="min-height: 600px; z-index: 1;"
+              style="min-height: 70vh; z-index: 1;"
             />
           </div>
         </div>
       </el-main>
 
       <el-dialog
-        title="发布文章"
+        title="發佈設置"
         :visible.sync="publishVisible"
         :close-on-click-modal="false"
         width="600px"
+        custom-class="b-dialog"
       >
-        <el-form :model="articleForm" ref="articleForm" :rules="rules" label-width="80px" label-position="top">
+        <el-form :model="articleForm" ref="articleForm" :rules="rules" label-position="top">
+
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="文章分類" prop="category">
+                <el-select v-model="articleForm.category" value-key="id" placeholder="選擇分類" style="width:100%">
+                  <el-option v-for="c in categorys" :key="c.id" :label="c.categoryName" :value="c"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="誰可以看" prop="viewKeys">
+                <el-select v-model="articleForm.viewKeys" placeholder="選擇權限" style="width:100%">
+                  <el-option label="全員可見" :value="1">
+                    <span style="float: left">全員可見</span>
+                    <span style="float: right; color: #8492a6; font-size: 13px"><i class="el-icon-view"></i></span>
+                  </el-option>
+                  <el-option label="僅自己可見" :value="2">
+                    <span style="float: left">僅自己可見</span>
+                    <span style="float: right; color: #8492a6; font-size: 13px"><i class="el-icon-lock"></i></span>
+                  </el-option>
+                  <el-option label="登錄可見" :value="3">
+                    <span style="float: left">登錄可見</span>
+                    <span style="float: right; color: #8492a6; font-size: 13px"><i class="el-icon-user"></i></span>
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-form-item label="文章封面" prop="cover">
+            <div
+              class="cover-uploader"
+              @click="triggerCoverUpload"
+              v-loading="coverLoading"
+              element-loading-text="上傳中..."
+              element-loading-spinner="el-icon-loading"
+              element-loading-background="rgba(255, 255, 255, 0.8)"
+            >
+              <img v-if="articleForm.cover" :src="articleForm.cover" class="cover-image">
+              <div v-else class="upload-placeholder">
+                <i class="el-icon-plus"></i>
+                <span>點擊上傳封面</span>
+              </div>
+            </div>
+            <input type="file" ref="coverInput" accept="image/*" style="display: none" @change="handleCoverUpload">
+          </el-form-item>
+
+          <el-form-item label="添加標籤" prop="tags">
+            <div class="b-tag-wrapper">
+              <el-checkbox-group v-model="articleForm.tags">
+                <el-checkbox v-for="t in tags" :key="t.id" :label="t.id" size="small" class="b-tag-checkbox">
+                  # {{t.tagName}}
+                </el-checkbox>
+              </el-checkbox-group>
+            </div>
+          </el-form-item>
+
           <el-form-item label="文章摘要" prop="summary">
-            <el-input type="textarea" v-model="articleForm.summary" :rows="4" placeholder="好的摘要能吸引更多读者..."></el-input>
-          </el-form-item>
-          <el-form-item label="选择分类" prop="category">
-            <el-select v-model="articleForm.category" value-key="id" placeholder="请选择文章分类" style="width:100%">
-              <el-option v-for="c in categorys" :key="c.id" :label="c.categoryName" :value="c"></el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="添加标签" prop="tags">
-            <el-checkbox-group v-model="articleForm.tags">
-              <el-checkbox v-for="t in tags" :key="t.id" :label="t.id" border size="small" class="tag-checkbox">{{t.tagName}}</el-checkbox>
-            </el-checkbox-group>
+            <el-input
+              type="textarea"
+              v-model="articleForm.summary"
+              :rows="3"
+              placeholder="給你的文章寫一段簡短的介紹吧..."
+              maxlength="200"
+              show-word-limit
+            ></el-input>
           </el-form-item>
         </el-form>
-        <div slot="footer" class="dialog-footer">
-          <el-button @click="publishVisible = false">取消</el-button>
-          <el-button type="primary" @click="publish('articleForm')">确定发布</el-button>
+        <div slot="footer" class="b-dialog-footer">
+          <el-button @click="publishVisible = false">再改改</el-button>
+          <el-button type="primary" class="b-final-btn" @click="publish('articleForm')">確認提交</el-button>
         </div>
       </el-dialog>
 
@@ -76,7 +134,6 @@
 </template>
 
 <script>
-// 【关键】直接引入 mavon-editor 和样式
 import { mavonEditor } from 'mavon-editor'
 import 'mavon-editor/dist/css/index.css'
 
@@ -87,10 +144,11 @@ import { upload } from '@/api/upload'
 
 export default {
   name: 'BlogWrite',
-  components: { mavonEditor }, // 注册组件
+  components: { mavonEditor },
   data() {
     return {
       publishVisible: false,
+      coverLoading: false, //  新增：控制封面局部的 loading 狀態
       categorys: [],
       tags: [],
       articleForm: {
@@ -99,18 +157,21 @@ export default {
         summary: '',
         category: '',
         tags: [],
-        content: '' // 【关键】直接绑定字符串，简单直接
+        content: '',
+        cover: '',
+        viewKeys: 1
       },
       rules: {
-        summary: [{required: true, message: '请输入摘要', trigger: 'blur'}],
-        category: [{required: true, message: '请选择分类', trigger: 'change'}],
-        tags: [{type: 'array', required: true, message: '请选择标签', trigger: 'change'}]
+        summary: [{required: true, message: '請輸入摘要', trigger: 'blur'}],
+        category: [{required: true, message: '請選擇分類', trigger: 'change'}],
+        tags: [{type: 'array', required: true, message: '請選擇標籤', trigger: 'change'}],
+        viewKeys: [{required: true, message: '請選擇可視範圍', trigger: 'change'}]
       }
     }
   },
   computed: {
     title() {
-      return '写文章 - ' + (this.articleForm.title || '无标题')
+      return '寫文章 - ' + (this.articleForm.title || '無標題')
     },
     userAvatar() {
       return this.$store.state.avatar || '/static/img/default_avatar.png'
@@ -123,7 +184,6 @@ export default {
     this.getCategorysAndTags()
   },
   methods: {
-    // 获取文章详情（编辑模式）
     getArticle() {
       getArticleById(this.$route.params.id).then(res => {
         if(res.success){
@@ -133,8 +193,9 @@ export default {
           this.articleForm.summary = article.summary
           this.articleForm.category = article.category
           this.articleForm.tags = article.tags.map(t => t.id)
-          // 【关键】回显内容
           this.articleForm.content = article.body.content
+          this.articleForm.cover = article.cover
+          this.articleForm.viewKeys = article.viewKeys || 1
         }
       })
     },
@@ -142,12 +203,9 @@ export default {
       getAllCategorys().then(res => { this.categorys = res.data })
       getAllTags().then(res => { this.tags = res.data })
     },
-
-    // 【关键】图片上传功能
     imgAdd(pos, $file) {
       var formdata = new FormData();
       formdata.append('image', $file);
-      // 后端根据这个字段，把图片存到 /articles/2026/01/xxx.png
       formdata.append('path', 'articles');
       upload(formdata).then(res => {
         if(res.success) {
@@ -155,29 +213,56 @@ export default {
         } else {
           this.$message.error(res.msg);
         }
-      }).catch(err => {
-        console.error(err)
-        this.$message.error('图片上传失败');
       })
     },
+    triggerCoverUpload() {
+      this.$refs.coverInput.click()
+    },
+    handleCoverUpload(event) {
+      const file = event.target.files[0]
+      if (!file) return
 
+      if (file.size > 2 * 1024 * 1024) {
+        this.$message.warning('封面圖片建議小於 2MB 哦');
+        return;
+      }
+
+      //  開始上傳：只開啟局部 Loading
+      this.coverLoading = true;
+
+      var formdata = new FormData();
+      formdata.append('image', file);
+      formdata.append('path', 'covers');
+
+      upload(formdata).then(res => {
+        this.coverLoading = false; //  結束上傳
+        if(res.success) {
+          this.articleForm.cover = res.data;
+          this.$message.success('封面設置成功！');
+        } else {
+          this.$message.error(res.msg);
+        }
+      }).catch(() => {
+        this.coverLoading = false; //  出錯也要關閉
+        this.$message.error('上傳失敗');
+      })
+      event.target.value = '';
+    },
     publishShow() {
       if (!this.articleForm.title) {
-        this.$message({message: '标题不能为空哦', type: 'warning'})
+        this.$message({message: '標題不能為空哦', type: 'warning'})
         return
       }
       if (!this.articleForm.content) {
-        this.$message({message: '内容不能为空哦', type: 'warning'})
+        this.$message({message: '內容不能為空哦', type: 'warning'})
         return
       }
       this.publishVisible = true
     },
-
     publish(formName) {
       this.$refs[formName].validate((valid) => {
         if (valid) {
           let tags = this.articleForm.tags.map(id => { return {id: id} });
-
           let article = {
             id: this.articleForm.id,
             title: this.articleForm.title,
@@ -186,15 +271,15 @@ export default {
             tags: tags,
             body: {
               content: this.articleForm.content,
-              // 【关键】获取渲染后的 HTML
               contentHtml: this.$refs.md.d_render
-            }
+            },
+            cover: this.articleForm.cover,
+            viewKeys: this.articleForm.viewKeys
           }
-
           this.publishVisible = false
           publishArticle(article).then(res => {
             if (res.success) {
-              this.$message({message: '发布成功啦！', type: 'success'})
+              this.$message({message: '發佈成功啦！', type: 'success'})
               this.$router.push({path: `/view/${res.data.id}`})
             } else {
               this.$message({message: res.msg, type: 'error'})
@@ -204,8 +289,8 @@ export default {
       });
     },
     cancel() {
-      this.$confirm('文章将不会保存, 是否继续?', '提示', {
-        confirmButtonText: '确定',
+      this.$confirm('文章將不會保存, 是否繼續?', '提示', {
+        confirmButtonText: '確定',
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
@@ -226,97 +311,70 @@ export default {
 
 <style scoped>
 .write-container {
-  height: 100vh;
+  min-height: 100vh;
+  /* 莫蘭迪灰藍 */
+  background: #eef2f5;
   display: flex;
   flex-direction: column;
 }
 
-/* 顶部 Header */
 .write-header {
-  background: #fff;
-  border-bottom: 1px solid #ddd;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  padding: 0 40px;
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  z-index: 100;
+  z-index: 1000;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.03);
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
+.header-left { display: flex; align-items: center; }
+.back-home-btn { font-size: 14px; color: #61666d; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+.back-home-btn:hover { color: #fb7299; }
+.header-right { display: flex; align-items: center; gap: 24px; }
+.save-status { font-size: 12px; color: #9499a0; }
+.b-publish-btn { background-color: #fb7299; border: none; padding: 10px 24px; font-weight: bold; }
+.b-publish-btn:hover { transform: scale(1.05); background-color: #ff85ad; }
+.write-main { margin-top: 84px; padding: 0 20px 40px; }
+.write-card { max-width: 1100px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); border-radius: 12px; padding: 40px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05); }
+.title-section { margin-bottom: 30px; position: relative; }
+.b-title-input >>> .el-textarea__inner { border: none; resize: none; font-size: 30px; font-weight: 600; color: #18191c; padding: 0; background: transparent; line-height: 1.4; }
+.title-underline { height: 2px; background: #e3e5e7; width: 100%; margin-top: 10px; }
+.b-editor { border: 1px solid #f1f2f3 !important; border-radius: 8px !important; box-shadow: none !important; }
 
-.back-btn {
-  font-size: 15px;
-  color: #666;
+/* 彈窗樣式 */
+.b-dialog >>> .el-dialog { border-radius: 16px; overflow: hidden; }
+.b-dialog >>> .el-dialog__header { text-align: center; font-weight: bold; padding-top: 30px; }
+.b-tag-wrapper { background: #f6f7f8; padding: 15px; border-radius: 8px; }
+.b-tag-checkbox { margin-right: 15px !important; margin-bottom: 5px; }
+.b-final-btn { background: #00aeec; border: none; width: 140px; }
+
+/* 這裡我保持了 320x180 的比例，看起來比較像文章封面，
+   如果你想改回原來的寬度，把 width: 320px 改成 width: 100% 即可，
+   但重點是 loading 不會再全屏了！ */
+.cover-uploader {
+  width: 320px;
+  height: 180px;
+  margin: 0 auto;
+  border: 2px dashed #e3e5e7;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
+  justify-content: center;
   align-items: center;
-  transition: color 0.3s;
+  transition: border-color 0.3s;
+  overflow: hidden;
+  background-color: #fbfbfb;
+  position: relative; /* 為了讓 v-loading 定位正確 */
 }
-.back-btn:hover { color: #409EFF; }
-.back-btn i { margin-right: 4px; font-weight: bold; }
-
-.header-title-text {
-  font-size: 18px;
-  font-weight: 500;
-  color: #333;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-.header-avatar { border: 1px solid #eee; }
-
-/* 主体区域 */
-.write-main {
-  margin-top: 60px; /* 避开 Header */
-  padding: 40px 0;
-  overflow-y: auto;
-}
-
-.write-content {
-  width: 900px;
-  margin: 0 auto;
-}
-
-/* 标题输入框 */
-.title-input-wrapper { margin-bottom: 30px; }
-
-.title-input >>> .el-textarea__inner {
-  border: none;
-  resize: none;
-  font-size: 32px;
-  font-weight: bold;
-  color: #000;
-  padding: 0;
-  background: transparent;
-  line-height: 1.5;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-}
-.title-input >>> .el-textarea__inner::placeholder { color: #ccc; font-weight: 400; }
-
-/* 编辑器样式修复 */
-.me-editor {
-  z-index: 1 !important; /* 防止被 header 遮挡 */
-  box-shadow: none !important; /* 去掉默认阴影，更清爽 */
-  border: 1px solid #eee;
-  border-radius: 4px;
-}
-
-/* Dialog 样式 */
-.tag-checkbox {
-  margin-bottom: 10px;
-  margin-left: 0 !important;
-  margin-right: 10px;
-}
+.cover-uploader:hover { border-color: #409EFF; }
+.upload-placeholder { display: flex; flex-direction: column; align-items: center; color: #8c939d; }
+.upload-placeholder i { font-size: 28px; margin-bottom: 8px; }
+.cover-image { width: 100%; height: 100%; object-fit: cover; }
 </style>
