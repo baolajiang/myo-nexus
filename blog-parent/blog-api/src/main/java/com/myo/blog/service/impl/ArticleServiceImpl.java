@@ -186,8 +186,9 @@ public class ArticleServiceImpl implements ArticleService {
     @Override
     @Transactional
     public Result publish(ArticleParam articleParam) {
+        // 1. 获取当前登录用户
         SysUser sysUser = UserThreadLocal.get();
-
+        // 2. 创建文章实体
         Article article = new Article();
         article.setAuthorId(sysUser.getId()); // 直接获取 String ID
         article.setCategoryId(articleParam.getCategory().getId()); // 已经是 String
@@ -199,10 +200,10 @@ public class ArticleServiceImpl implements ArticleService {
         article.setWeight(Article.Article_Common);
         article.setBodyId("-1");
         article.setCover(articleParam.getCover());
-
+        // 3. 插入文章到数据库
         this.articleMapper.insert(article);
 
-        // Tags
+        // 4. 处理标签关联
         List<TagVo> tags = articleParam.getTags();
         if (tags != null) {
             for (TagVo tag : tags) {
@@ -213,17 +214,18 @@ public class ArticleServiceImpl implements ArticleService {
             }
         }
 
-        // Body
+        // 5. 处理文章内容
         ArticleBody articleBody = new ArticleBody();
         articleBody.setContent(articleParam.getBody().getContent());
         articleBody.setContentHtml(articleParam.getBody().getContentHtml());
         articleBody.setArticleId(article.getId());
-
         articleBodyMapper.insert(articleBody);
 
+        // 6. 更新文章的内容ID
         article.setBodyId(articleBody.getId());
-
         articleMapper.updateById(article);
+
+        // 7. 发送MQ消息清理缓存
         // ================== 发送 MQ 消息 (生产级写法) ==================
         try {
             // 发送消息
@@ -237,7 +239,7 @@ public class ArticleServiceImpl implements ArticleService {
             // 降级策略 (可选)：如果 MQ 挂了，这里可以手动删一次 Redis 作为兜底
             // redisTemplate.delete("listArticle*");
         }
-
+        // 8. 返回结果
         Map<String, String> map = new HashMap<>();
         map.put("id", article.getId()); // 已经是 String
 
