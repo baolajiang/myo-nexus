@@ -7,7 +7,7 @@ import java.util.List;
 @Data
 public class ArticleVo {
 
-//    @JsonSerialize(using = ToStringSerializer.class)
+
     private String id;
 
     private String title;

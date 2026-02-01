@@ -35,7 +35,14 @@
               round
               icon="el-icon-edit">编辑</el-button>
           </div>
-
+      <div class="article-alert" v-if="daysDiff > 180">
+        <el-alert
+          :title="alertMessage"
+          type="warning"
+          show-icon
+          :closable="false">
+        </el-alert>
+      </div>
        <div class="me-view-content">
             <markdown-editor :editor="article.editor"/>
         </div>
@@ -157,6 +164,24 @@
       }
     },
     computed: {
+      // 1. 计算文章发布至今的天数
+      daysDiff() {
+        if (!this.article.createDate) return 0;
+
+        // 获取当前时间戳
+        const now = new Date().getTime();
+        // 获取文章发布时间戳 (注意：后端传来的可能是 'yyyy-MM-dd' 字符串，Date对象能自动解析)
+        const create = new Date(this.article.createDate).getTime();
+
+        // 计算差值 (毫秒 -> 天)
+        const diff = now - create;
+        return Math.floor(diff / (1000 * 3600 * 24));
+      },
+
+      // 2. 生成提示文字
+      alertMessage() {
+        return `本文发布于 ${this.daysDiff} 天前，可能其部分内容已经发生变化，如有疑问可询问作者。`;
+      },
 
       avatar() {
         let avatar = this.$store.state.avatar
@@ -390,6 +415,12 @@
 
   .v-note-wrapper .v-note-panel .v-note-show .v-show-content, .v-note-wrapper .v-note-panel .v-note-show .v-show-content-html {
     background: #fff !important;
+  }
+  /* 在 style 标签最后添加 */
+  .article-alert {
+    margin: 20px 0;
+    border-radius: 4px;
+    overflow: hidden;
   }
 
 

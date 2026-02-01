@@ -4,12 +4,14 @@ import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.myo.blog.config.RabbitConfig;
+import com.myo.blog.dao.mapper.ArticleMapper;
 import com.myo.blog.dao.mapper.CommentMapper;
 import com.myo.blog.dao.pojo.Comment;
 import com.myo.blog.dao.pojo.SysUser;
 import com.myo.blog.dao.pojo.Tag;
 import com.myo.blog.service.CommentsService;
 import com.myo.blog.service.SysUserService;
+import com.myo.blog.service.ThreadService;
 import com.myo.blog.utils.UserThreadLocal;
 import com.myo.blog.entity.CommentVo;
 import com.myo.blog.entity.Result;
@@ -39,6 +41,10 @@ public class CommentsServiceImpl implements CommentsService {
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
+    @Autowired
+    private ArticleMapper articleMapper;
+    @Autowired
+    private ThreadService threadService;
 
     @Override
     public Result commentsByArticleId(String id) {
@@ -84,17 +90,20 @@ public class CommentsServiceImpl implements CommentsService {
         String toUserId = commentParam.getToUserId();
 
         comment.setToUid(toUserId == null ? "0" : toUserId);
+        // 插入评论
         this.commentMapper.insert(comment);
+        // 异步更新文章的评论数量
+        threadService.updateArticleCommentCount(articleMapper, comment.getArticleId());
         return Result.success(null);
     }
 
 
-
+    /**
+     * 查询文章的评论数量
+     * @param id 文章ID
+     * @return 评论数量
+     */
     public Result queryCommentCount(int id) {
-        /**
-         * 1. 标签所拥有的文章数量最多 最热标签
-         * 2. 查询 根据tag_id 分组 计数，从大到小 排列 取前 limit个
-         */
         Integer count = commentMapper.queryCommentCount(id);
         return Result.success(count);
     }

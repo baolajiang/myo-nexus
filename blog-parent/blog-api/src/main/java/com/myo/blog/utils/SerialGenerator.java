@@ -35,7 +35,11 @@ public class SerialGenerator {
         }
         System.out.println("当前机器码已初始化为: " + MACHINE_ID);
     }
-
+    /**
+     * 生成序列号
+     * @param bizPrefix 业务前缀
+     * @return 序列号
+     */
     public static String generate(String bizPrefix) {
         // A. 时间部分
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");

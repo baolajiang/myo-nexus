@@ -25,12 +25,13 @@
         @mouseleave.stop="setHoverLevel(1)"
       >
         <div class="img-mask">
-          <img :src="ImageView()"
-               class="luna-img"
-               ref="img"
-               alt="cover"
-               loading="lazy"
-               decoding="async"
+          <img
+            :src="currentImg"
+            class="luna-img"
+            :class="{ 'is-loading': !imgLoaded }"
+            ref="img"
+            alt="cover"
+            loading="lazy"
           >
         </div>
         <div class="gold-sheen" ref="sheen"></div>
@@ -69,6 +70,7 @@
 <script>
 import { formatTime } from "@/utils/time";
 import { gsap } from "gsap";
+import { loadProgressiveImage } from "@/utils/progressive";
 
 export default {
   name: 'ArticleItem',
@@ -82,7 +84,9 @@ export default {
   data() {
     return {
       // 0 = 离开, 1 = 卡片悬浮, 2 = 图片悬浮
-      hoverLevel: 0
+      hoverLevel: 0,
+      imgLoaded: false, // 标记大图是否加载完成
+      currentImg: '',   // 当前显示的图片链接
     }
   },
   computed: {
@@ -100,6 +104,10 @@ export default {
     }
   },
   mounted() {
+    loadProgressiveImage(this.cover, (url, loaded) => {
+      this.currentImg = url;
+      this.imgLoaded = loaded;
+    });
     gsap.from(this.$refs.cardWrap, {
       opacity: 0,
       y: 20,
@@ -116,9 +124,6 @@ export default {
         // 长ID保持原路由
         this.$router.push({ path: `/view/${id}` })
       } },
-    ImageView() {
-      return this.cover
-    },
 
     setHoverLevel(level) {
       this.hoverLevel = level;
@@ -318,7 +323,17 @@ export default {
 }
 
 .img-mask { width: 100%; height: 100%; background: var(--bg-img-box); }
-.luna-img { width: 100%; height: 100%; object-fit: cover; will-change: transform; }
+.luna-img { width: 100%; height: 100%; object-fit: cover; will-change: transform;
+  transition: filter 0.6s ease-in-out, transform 0.6s ease;
+}
+.luna-img.is-loading{
+  filter: blur(15px);
+  /* 轻微放大图片，防止模糊导致的边缘白边问题
+     (注意：这可能会和 GSAP hover 动画有一点点冲突，
+     如果 hover 时有跳动，可以把这个 scale 去掉，或者在 frame-box 上加背景色)
+  */
+  transform: scale(1.1);
+}
 
 /* 内容区域 */
 .text-panel {

@@ -59,4 +59,11 @@ public interface ArticleService {
      * @return
      */
     Result publish(ArticleParam articleParam);
+
+    /**
+     * 后台管理：获取文章列表
+     * @param pageParams 分页参数（可能包含 query 搜索关键词）
+     * @return Result
+     */
+    Result listArticleForAdmin(PageParams pageParams);
 }

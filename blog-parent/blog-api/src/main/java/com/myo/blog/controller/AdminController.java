@@ -10,6 +10,7 @@ import com.myo.blog.entity.ErrorCode;
 import com.myo.blog.entity.Result;
 import com.myo.blog.entity.params.PageParams;
 import com.myo.blog.entity.params.UserParam;
+import com.myo.blog.service.ArticleService;
 import com.myo.blog.service.SysUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -26,7 +27,8 @@ public class AdminController {
 
     @Autowired
     private IpBlacklistMapper ipBlacklistMapper;
-
+    @Autowired
+    private ArticleService articleService;
 
     @Autowired
     private SysUserService sysUserService;
@@ -122,6 +124,13 @@ public class AdminController {
             return Result.success("更新成功");
         }
         return Result.fail(ErrorCode.OPERATION_FAILED.getCode(), "更新失败");
+    }
+    /**
+     * 文章列表 (后台管理专用)
+     */
+    @PostMapping("article/list")
+    public Result listArticle(@RequestBody PageParams pageParams) {
+        return articleService.listArticleForAdmin(pageParams);
     }
 
 

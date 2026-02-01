@@ -179,7 +179,7 @@ public class ArticleServiceImpl implements ArticleService {
             return Result.fail(404, "文章不存在");
         }
         // 增加阅读数
-        threadService.updateArticleViewCount(articleMapper, article);
+        threadService.updateArticleViewCount(articleMapper, article.getId());
         return Result.success(copy(article, true, true, true, true));
     }
 
@@ -408,5 +408,29 @@ public class ArticleServiceImpl implements ArticleService {
             e.printStackTrace();
         }
         return "";
+    }
+    @Override
+    public Result listArticleForAdmin(PageParams pageParams) {
+        // 1. 创建分页对象
+        Page<Article> page = new Page<>(pageParams.getPage(), pageParams.getPageSize());
+
+        // 2. 构建查询条件
+        LambdaQueryWrapper<Article> queryWrapper = new LambdaQueryWrapper<>();
+
+        queryWrapper.orderByDesc(Article::getWeight, Article::getCreateDate);
+
+        // 3. 执行查询
+        articleMapper.selectPage(page, queryWrapper);
+
+        // 4. 转换 VO (复用 copyList，填充作者和分类信息)
+        // 后台列表通常不需要显示 Tag (太占位置)，但需要 Author 和 Category
+        List<ArticleVo> articleVoList = copyList(page.getRecords(), false, true, false, true, true);
+
+        // 5. 封装结果
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", articleVoList);
+        result.put("total", page.getTotal());
+
+        return Result.success(result);
     }
 }

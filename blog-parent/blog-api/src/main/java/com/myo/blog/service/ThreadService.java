@@ -5,28 +5,38 @@ import com.myo.blog.dao.mapper.ArticleMapper;
 import com.myo.blog.dao.pojo.Article;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-
+/**
+ * 线程池 异步执行 更新文章的阅读量
+ */
 @Component
 public class ThreadService {
-
-        //期望此操作在线程池 执行 不会影响原有的主线程
+    /**
+     * 异步更新文章的评论数量
+     * @param articleMapper 文章映射器
+     * @param articleId 文章ID
+     */
     @Async("taskExecutor")
-    public void updateArticleViewCount(ArticleMapper articleMapper, Article article) {
-
-        int viewCounts = article.getViewCounts();
-        Article articleUpdate = new Article();
-        articleUpdate.setViewCounts(viewCounts +1);
+    public void updateArticleCommentCount(ArticleMapper articleMapper, String articleId) {
+        // 直接让数据库执行 count = count + 1，防止并发覆盖，也无需关心旧值
         LambdaUpdateWrapper<Article> updateWrapper = new LambdaUpdateWrapper<>();
-        updateWrapper.eq(Article::getId,article.getId());
-        //设置一个 为了在多线程的环境下 线程安全
-        updateWrapper.eq(Article::getViewCounts,viewCounts);
-        // update article set view_count=100 where view_count=99 and id=11
-        articleMapper.update(articleUpdate,updateWrapper);
-//        try {
-//            Thread.sleep(5000);
-//            System.out.println("更新完成了....");
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
+        updateWrapper.eq(Article::getId, articleId);
+        updateWrapper.setSql("comment_counts = IFNULL(comment_counts, 0) + 1");
+
+        articleMapper.update(null, updateWrapper);
     }
+    /**
+     * 异步更新文章的阅读量
+     * @param articleMapper 文章映射器
+     * @param articleId 文章ID
+     */
+    @Async("taskExecutor")
+    public void updateArticleViewCount(ArticleMapper articleMapper, String articleId) {
+        // 直接让数据库 view_counts + 1
+        LambdaUpdateWrapper<Article> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Article::getId, articleId);
+        updateWrapper.setSql("view_counts = IFNULL(view_counts, 0) + 1");
+
+        articleMapper.update(null, updateWrapper);
+    }
+
 }

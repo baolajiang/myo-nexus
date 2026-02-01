@@ -46,7 +46,7 @@
                 and (FROM_UNIXTIME(create_date/1000,'%Y') =#{year} and FROM_UNIXTIME(create_date/1000,'%m')=#{month})
             </if>
         </where>
-        order by weight,create_date desc
+        order by weight desc,create_date desc
     </select>
 
     <select id="listArticleCount" resultType="Integer">
