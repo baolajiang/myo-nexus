@@ -155,24 +155,24 @@ export default {
           nickname: '路过的一只',
           level: 5,
           avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
-          content: '这个主题风格真的很赞！非常符合博主 BaseHeader 和 ArticleItem 的设计语言，尤其是那个月亮和樱花的装饰，太有感觉了！',
+          content: '测试数据',
           time: '2026-01-30 14:00',
           like: 23,
           isAdmin: false,
           isLiked: true,
           expanded: false, // 控制折叠
           children: [
-            { id: 101, nickname: '博主', isAdmin: true, targetUser: '路过的一只', content: '谢谢夸奖！特意调整了样式来匹配主题。', time: '14:05' },
-            { id: 102, nickname: '路过的一只', targetUser: '博主', content: '展开收起的动画也很丝滑，爱了爱了。', time: '14:10' },
-            { id: 103, nickname: '围观群众', content: '我是第三条回复，默认是折叠的。', time: '14:15' },
-            { id: 104, nickname: '测试员', content: '我是第四条，测试一下长列表效果。', time: '14:20' }
+            { id: 101, nickname: '博主', isAdmin: true, targetUser: '路过的一只', content: '测试数据回复', time: '14:05' },
+            { id: 102, nickname: '路过的一只', targetUser: '博主', content: '测试数据回复', time: '14:10' },
+            { id: 103, nickname: '围观群众', content: '测试数据回复', time: '14:15' },
+            { id: 104, nickname: '测试员', content: '测试数据回复', time: '14:20' }
           ]
         },
         {
           id: 2,
           nickname: 'Bika老粉',
           avatar: defaultAvatar,
-          content: '这就对味了，这种灰底的子评论区结构清晰，很像哔咔的风格，但是配色又很清新。',
+          content: '测试数据',
           time: '2026-01-29 18:30',
           like: 5,
           isAdmin: false,
@@ -194,7 +194,12 @@ export default {
   },
   methods: {
     submitMessage() {
-      if (!this.newMessage.trim()) return this.$message.warning('写点什么吧~');
+      if (!this.newMessage.trim())
+        return this.$myMessage({
+          type: 'warning',
+          content: '写点什么吧~',
+          duration: 3000
+        })
       this.messages.unshift({
         id: Date.now(),
         nickname: this.$store.state.nickname || '我',
