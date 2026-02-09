@@ -1,336 +1,356 @@
 <template>
-  <div class="moon-library-container">
+  <div class="ethereal-hero">
 
-    <div class="bg-deep-night"></div>
-    <div class="bg-vignette"></div>
-    <div class="svg-bg-layer" ref="svgLayer">
-      <svg class="svg-canvas" viewBox="0 0 800 800">
-        <defs>
-          <linearGradient id="moonGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" style="stop-color:#b088ff;stop-opacity:0.2" />
-            <stop offset="100%" style="stop-color:#d45d79;stop-opacity:0.0" />
-          </linearGradient>
-        </defs>
+    <div class="hero-bg" :style="{ backgroundImage: `url(${bgImage})` }"></div>
 
-        <g class="magic-circle spin-slow" opacity="0.15">
-          <circle cx="400" cy="400" r="350" stroke="#b088ff" stroke-width="1" fill="none" stroke-dasharray="20,10" />
-          <circle cx="400" cy="400" r="300" stroke="#b088ff" stroke-width="2" fill="none" />
-          <polygon points="400,100 660,550 140,550" stroke="#b088ff" stroke-width="1" fill="none" />
-          <polygon points="400,700 660,250 140,250" stroke="#b088ff" stroke-width="1" fill="none" />
-        </g>
+    <div class="hero-overlay"></div>
 
-        <path d="M-100,800 Q400,200 900,800" fill="none" stroke="url(#moonGrad)" stroke-width="2" opacity="0.5" />
-      </svg>
-    </div>
+    <canvas ref="canvasBg" class="hero-canvas"></canvas>
 
-    <div class="floating-layer">
-      <div v-for="n in 6" :key="'book-'+n" class="float-item book" :style="getRandomStyle('book')">
-        <i class="el-icon-notebook-1"></i>
-      </div>
-      <div v-for="n in 20" :key="'flower-'+n" class="float-item flower" :style="getRandomStyle('flower')">
-        ✿
-      </div>
-      <div v-for="n in 15" :key="'dust-'+n" class="float-item dust" :style="getRandomStyle('dust')"></div>
-    </div>
+    <div class="hero-content">
 
-    <div class="content-wrapper" ref="content">
-
-      <div class="avatar-seal">
-        <div class="seal-ring outer"></div>
-        <div class="seal-ring inner"></div>
-        <div class="avatar-core">
-          <img
-            src="https://cos.myo.pub/others/cc7149fdbde94f55a82533c57603d710.jpg"
-            class="user-img"
-            alt="Avatar"
-            @error="handleImgError"
-          >
-        </div>
+      <div class="avatar-wrap">
+        <img :src="$store.state.avatar || defaultAvatar" class="avatar" alt="avatar" />
+        <div class="avatar-glow"></div>
       </div>
 
-      <div class="text-group">
-        <div class="top-tag">
-          <span class="rune">✦</span>
-          <span>MOON'S VILLA</span>
-        </div>
+      <h1 class="hero-name">{{ $store.state.name || "Master" }}</h1>
 
-        <h1 class="main-title">
-          月之<br>
-          <span class="highlight">別邸</span>
-        </h1>
-
-        <div class="divider-line"></div>
-
-        <p class="desc-text">
-          「 於靜謐的書海與星光之間，<br>
-          編織代碼與夢境的篇章。 」
-        </p>
+      <div class="hero-motto">
+        <span class="type-text">{{ displayedText }}</span><span class="cursor" v-show="showCursor">|</span>
       </div>
 
-      <div class="nav-list">
-        <div
-          class="nav-item"
-          v-for="(item, index) in menuItems"
-          :key="index"
-          @click="navigate(item.path)"
-          @mouseenter="onHover($event)"
-          @mouseleave="onLeave($event)"
-        >
-          <div class="nav-bar"></div>
-          <i :class="item.icon" class="nav-icon"></i>
-          <span class="nav-text">{{ item.cn }}</span>
-          <span class="hover-spark">✨</span>
-        </div>
+      <div class="hero-meta">
+        <span class="meta-item">Lv.7</span>
+        <span class="meta-divider"></span>
+        <span class="meta-item">Front-End Developer</span>
+        <span class="meta-divider"></span>
+        <span class="meta-item">ACGN Lover</span>
       </div>
 
     </div>
 
-    <div class="corner-decor">
-      <span>The Library of Moon</span>
-      <div class="decor-bar"></div>
+    <div class="scroll-down" @click="scrollDown">
+      <span class="scroll-text">Discover</span>
+      <i class="el-icon-arrow-down scroll-arrow"></i>
     </div>
 
   </div>
 </template>
 
 <script>
-import { gsap } from 'gsap';
+// 使用 require 确保静态资源路径在 webpack 打包后正确
+import defaultAvatarImg from '@/assets/img/default_avatar.png';
+// 你的日落背景图
+import bgImg from '../../../static/img/anime-sunset-art-wallpaper-2560x1080_14.jpg';
 
 export default {
-  name: "IndexMoonGrimoire",
+  name: "HeaderTop",
   data() {
     return {
-      menuItems: [
-        { cn: '魔導藏書', path: '/write', icon: 'el-icon-collection' },
-        { cn: '時光軌跡', path: '/archives', icon: 'el-icon-date' },
-        { cn: '訪客留言', path: '/messageBoard', icon: 'el-icon-chat-line-square' },
-        { cn: '關於別邸', path: '/Resume', icon: 'el-icon-user' }
-      ]
+      bgImage: bgImg,
+      defaultAvatar: defaultAvatarImg,
+
+      // 打字机状态
+      fullText: "There is always light behind the clouds.", // 你的签名
+      displayedText: "",
+      showCursor: true,
+
+      // Canvas 粒子数据
+      canvas: null,
+      ctx: null,
+      particles: [],
+      animationFrameId: null
     };
   },
   mounted() {
-    this.entranceAnim();
+    this.startTypewriter();
+    this.initCanvas();
+    window.addEventListener('resize', this.resizeCanvas);
+  },
+  beforeDestroy() {
+    window.removeEventListener('resize', this.resizeCanvas);
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+    }
   },
   methods: {
-    navigate(path) {
-      // 离场：向左虚化消失
-      const tl = gsap.timeline({ onComplete: () => this.$router.push(path) });
-      tl.to('.content-wrapper', { x: -50, opacity: 0, filter: 'blur(10px)', duration: 0.6 })
-        .to('.moon-library-container', { opacity: 0, duration: 0.5 }, "-=0.3");
-    },
-    handleImgError(e) {
-      e.target.style.display = 'none';
-      e.target.parentNode.style.backgroundColor = '#3e2a5f'; // 深紫兜底
-    },
-    // 生成随机漂浮物样式
-    getRandomStyle(type) {
-      const left = Math.random() * 100 + '%';
-      const duration = (Math.random() * 10 + 10) + 's';
-      const delay = (Math.random() * 5) + 's';
+    // 1. 极简打字机效果
+    startTypewriter() {
+      let index = 0;
+      const typeSpeed = 100; // 打字速度
 
-      let style = {
-        left: left,
-        animationDuration: duration,
-        animationDelay: delay
-      };
+      const typeInterval = setInterval(() => {
+        if (index < this.fullText.length) {
+          this.displayedText += this.fullText.charAt(index);
+          index++;
+        } else {
+          clearInterval(typeInterval);
+          // 打字完成后让光标继续闪烁
+          setInterval(() => {
+            this.showCursor = !this.showCursor;
+          }, 500);
+        }
+      }, typeSpeed);
+    },
 
-      if (type === 'book') {
-        style.fontSize = (Math.random() * 20 + 15) + 'px';
-        style.color = '#d45d79'; // 洋红色书本
-        style.top = Math.random() * 100 + '%'; // 书本全屏随机
-      } else if (type === 'flower') {
-        style.fontSize = (Math.random() * 10 + 10) + 'px';
-        style.color = Math.random() > 0.5 ? '#b088ff' : '#ffb7c5'; // 紫/粉花瓣
-        style.top = '-10%'; // 花瓣从顶落下
-      } else { // dust
-        style.width = Math.random() * 4 + 'px';
-        style.height = style.width;
-        style.backgroundColor = '#ffd700'; // 金色光尘
-        style.top = Math.random() * 100 + '%';
+    // 2. 初始化 Canvas (唯美星尘粒子)
+    initCanvas() {
+      this.canvas = this.$refs.canvasBg;
+      this.ctx = this.canvas.getContext('2d');
+      this.resizeCanvas();
+      this.createParticles();
+      this.animateParticles();
+    },
+
+    resizeCanvas() {
+      if (!this.canvas) return;
+      this.canvas.width = window.innerWidth;
+      this.canvas.height = window.innerHeight;
+    },
+
+    createParticles() {
+      const particleCount = 80; // 粒子数量
+      for (let i = 0; i < particleCount; i++) {
+        this.particles.push({
+          x: Math.random() * this.canvas.width,
+          y: Math.random() * this.canvas.height,
+          size: Math.random() * 2.5 + 0.5, // 大小
+          speedX: Math.random() * 0.5 - 0.25, // 左右漂移
+          speedY: Math.random() * -1 - 0.2,   // 向上漂浮
+          opacity: Math.random() * 0.5 + 0.1,
+          glow: Math.random() > 0.5 ? '#fb7299' : '#ffffff' // 你的主题粉色与白色交替
+        });
       }
-      return style;
     },
 
-    // === 修改点 3：恢复了菜单交互动画 (onHover/onLeave) ===
-    onHover(e) {
-      // 悬停：左侧条变长，文字变色
-      gsap.to(e.currentTarget.querySelector('.nav-bar'), { height: '100%', backgroundColor: '#ffd700', duration: 0.3 });
-      gsap.to(e.currentTarget.querySelector('.nav-text'), { x: 10, color: '#fff', duration: 0.3 });
-      gsap.to(e.currentTarget.querySelector('.nav-icon'), { color: '#ffd700', scale: 1.1, duration: 0.3 });
-      gsap.to(e.currentTarget.querySelector('.hover-spark'), { opacity: 1, scale: 1.2, rotation: 180, duration: 0.4 });
-    },
-    onLeave(e) {
-      gsap.to(e.currentTarget.querySelector('.nav-bar'), { height: '0%', backgroundColor: 'transparent', duration: 0.3 });
-      gsap.to(e.currentTarget.querySelector('.nav-text'), { x: 0, color: '#ccc', duration: 0.3 });
-      gsap.to(e.currentTarget.querySelector('.nav-icon'), { color: '#b088ff', scale: 1, duration: 0.3 });
-      gsap.to(e.currentTarget.querySelector('.hover-spark'), { opacity: 0, scale: 0, rotation: 0, duration: 0.3 });
+    animateParticles() {
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+      for (let i = 0; i < this.particles.length; i++) {
+        let p = this.particles[i];
+
+        // 绘制粒子 (带发光效果)
+        this.ctx.beginPath();
+        this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        this.ctx.fillStyle = `rgba(${p.glow === '#fb7299' ? '251,114,153' : '255,255,255'}, ${p.opacity})`;
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowColor = p.glow;
+        this.ctx.fill();
+
+        // 移动粒子
+        p.x += p.speedX;
+        p.y += p.speedY;
+
+        // 如果粒子飘出屏幕顶部，让它从底部重新出现
+        if (p.y < 0) {
+          p.y = this.canvas.height;
+          p.x = Math.random() * this.canvas.width;
+        }
+        // 左右出界处理
+        if (p.x > this.canvas.width || p.x < 0) {
+          p.speedX = -p.speedX;
+        }
+      }
+
+      this.animationFrameId = requestAnimationFrame(this.animateParticles);
     },
 
-    // 注意：删除了 handleMouseMove 方法，因为不再需要视差效果
-
-    // === 进场动画 ===
-    entranceAnim() {
-      const tl = gsap.timeline();
-      // 这里 from 里的 opacity: 0 是正确的，它是让元素从“不可见”渐变到“可见”
-      tl.from('.content-wrapper', { x: -50, opacity: 0, duration: 1.2, ease: "power3.out" })
-        .from('.avatar-core', { scale: 0, rotation: -90, duration: 1, ease: "back.out(1.5)" }, "-=0.8")
-        .from('.seal-ring', { scale: 1.5, opacity: 0, rotation: 180, duration: 1.2 }, "-=0.8")
-        .from(['.main-title', '.desc-text'], { x: -30, opacity: 0, stagger: 0.1, duration: 0.8 }, "-=0.6")
-        .from('.nav-item', { x: -20, opacity: 0, stagger: 0.1, duration: 0.6 }, "-=0.4");
+    // 3. 平滑滚动
+    scrollDown() {
+      window.scrollTo({
+        top: window.innerHeight,
+        behavior: 'smooth'
+      });
     }
   }
 };
 </script>
 
 <style scoped>
+/* 引入谷歌字体，打造 d-d.design 那种高级排版感 */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&family=Noto+Serif+SC:wght@300;700&display=swap');
 
-.moon-library-container {
-  position: relative; width: 100%; height: 100vh;
-  overflow: hidden;
-  font-family: 'Cinzel', 'Noto Serif TC', serif;
-  color: #e0d0ff;
-  background: #1a1226; /* 深紫底色 */
-}
-
-/* 1. 背景 */
-.bg-deep-night {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background: radial-gradient(circle at 70% 30%, #3e2045 0%, #1a1226 60%, #0d0814 100%);
-  z-index: 0;
-}
-.bg-vignette {
-  position: absolute; width: 100%; height: 100%;
-  background: radial-gradient(circle, transparent 50%, #000 120%);
-  z-index: 1; pointer-events: none;
-}
-
-/* SVG 背景 */
-.svg-bg-layer {
-  position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 0;
-}
-.svg-canvas { width: 100%; height: 100%; }
-.spin-slow { transform-origin: 400px 400px; animation: spin 60s linear infinite; }
-@keyframes spin { 100% { transform: rotate(360deg); } }
-
-/* 2. 漂浮细节 */
-.floating-layer { position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
-.float-item { position: absolute; opacity: 0.6; }
-
-/* 书本浮动动画 */
-.book { animation: floatBook linear infinite; color: #d45d79; }
-@keyframes floatBook {
-  0% { transform: translateY(0) rotate(-10deg); opacity: 0; }
-  50% { opacity: 0.8; }
-  100% { transform: translateY(-100px) rotate(10deg); opacity: 0; }
-}
-
-/* 花瓣飘落动画 */
-.flower { animation: fallFlower linear infinite; text-shadow: 0 0 5px rgba(255,255,255,0.3); }
-@keyframes fallFlower {
-  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
-  20% { opacity: 0.8; }
-  100% { transform: translate(50px, 100vh) rotate(360deg); opacity: 0; }
-}
-
-/* 光尘动画 */
-.dust { border-radius: 50%; box-shadow: 0 0 5px #ffd700; animation: twinkle 4s infinite ease-in-out; }
-@keyframes twinkle { 0%,100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
-
-
-/* 3. 左侧内容 (关键布局) */
-.content-wrapper {
-  position: absolute;
-  left: 10%; top: 50%; transform: translateY(-50%);
-  z-index: 10;
-  display: flex; flex-direction: column; align-items: flex-start;
-  gap: 35px;
-}
-
-/* A. 头像组 */
-.avatar-seal {
-  position: relative; width: 140px; height: 140px;
-  display: flex; justify-content: center; align-items: center;
-}
-.seal-ring {
-  position: absolute; border-radius: 50%;
-  border: 1px solid rgba(176, 136, 255, 0.4);
-}
-.outer { width: 100%; height: 100%; border-style: dashed; animation: spin 20s linear infinite; }
-.inner { width: 110%; height: 110%; border: 1px solid rgba(212, 93, 121, 0.3); animation: spin 30s linear infinite reverse; }
-
-.avatar-core {
-  width: 110px; height: 110px; border-radius: 50%;
-  overflow: hidden; z-index: 2;
-  border: 3px solid #b088ff; /* 紫色边框 */
-  box-shadow: 0 0 25px rgba(160, 68, 255, 0.4);
-  background: #2a1b3d;
-}
-.user-img { width: 100%; height: 100%; object-fit: cover; }
-
-/* B. 文字信息 */
-.text-group { text-align: left; }
-.top-tag {
-  font-size: 12px; color: #d45d79; letter-spacing: 2px; margin-bottom: 5px;
-  display: flex; align-items: center; gap: 8px; font-weight: 700;
-}
-.rune { color: #ffd700; }
-
-.main-title {
-  font-size: 3.5rem; font-weight: 700; margin: 0; line-height: 1.1;
-  color: #fff; text-shadow: 0 5px 20px rgba(0,0,0,0.6);
-  font-family: 'Noto Serif TC', serif;
-}
-.highlight {
-  color: #b088ff; /* 帕秋莉紫 */
-}
-
-.divider-line {
-  width: 60px; height: 3px; background: linear-gradient(to right, #d45d79, #b088ff);
-  margin: 20px 0; border-radius: 2px; opacity: 0.8;
-}
-
-.desc-text {
-  font-family: 'Noto Serif TC', serif; font-size: 1rem; color: #ccc;
-  line-height: 1.8; letter-spacing: 1px;
-}
-
-/* C. 导航菜单 */
-.nav-list {
-  display: flex; flex-direction: column; gap: 12px; margin-top: 10px;
-}
-.nav-item {
+.ethereal-hero {
   position: relative;
-  display: flex; align-items: center; gap: 15px;
-  padding: 10px 0 10px 20px;
-  width: 200px; cursor: pointer;
-  overflow: hidden; /* 遮住装饰条 */
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Montserrat', 'Noto Serif SC', sans-serif;
 }
 
-/* 装饰条（默认高度0，由GSAP控制变长） */
-.nav-bar {
-  position: absolute; left: 0; top: 0; width: 3px; height: 0%;
-  background-color: transparent; transition: height 0.3s;
+/* 1. 背景层 */
+.hero-bg {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-size: cover;
+  background-position: center;
+  z-index: 1;
+  /* 极其缓慢的放大动画，增加沉浸感 */
+  animation: bgZoom 30s linear infinite alternate;
 }
-.nav-icon { font-size: 1.2rem; color: #b088ff; transition: all 0.3s; }
-.nav-text { font-size: 1rem; color: #ccc; font-weight: 600; letter-spacing: 1px; transition: all 0.3s; }
-/* 闪光特效（默认opacity 0，由GSAP控制显示） */
-.hover-spark {
-  position: absolute; right: 20px; font-size: 0.8rem; opacity: 0;
-  transition: all 0.3s;
+@keyframes bgZoom {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
 }
 
-/* 右下角 */
-.corner-decor {
-  position: absolute; bottom: 30px; right: 40px;
-  color: rgba(255,255,255,0.3); font-size: 12px; letter-spacing: 2px;
-  text-align: right;
+/* 2. 遮罩层 (至关重要：压暗背景，让白色文字发光) */
+.hero-overlay {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 2;
+  /* 顶部透明，底部深色渐变，融合你的网站背景色 */
+  background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.6) 100%);
 }
-.decor-bar { width: 40px; height: 1px; background: #fff; opacity: 0.3; margin-top: 5px; margin-left: auto; }
 
-/* 移动端适配 */
-@media screen and (max-width: 900px) {
-  .content-wrapper { left: 8%; top: 45%; }
-  .main-title { font-size: 2.8rem; }
-  .svg-canvas { opacity: 0.3; }
+/* 3. Canvas 粒子层 */
+.hero-canvas {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 3;
+  pointer-events: none; /* 防止遮挡点击事件 */
+}
+
+/* 4. 内容层 */
+.hero-content {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  color: #fff;
+  padding: 0 20px;
+  /* 入场上浮动画 */
+  animation: contentFadeIn 1.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  opacity: 0;
+  transform: translateY(30px);
+}
+@keyframes contentFadeIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- 排版细节 --- */
+
+/* 头像：极简描边，自带光晕 */
+.avatar-wrap {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+}
+.avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.8);
+  position: relative;
+  z-index: 2;
+  transition: transform 0.5s;
+}
+.avatar-wrap:hover .avatar {
+  transform: rotate(360deg);
+}
+.avatar-glow {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  border-radius: 50%;
+  background: #fb7299; /* 你的主题粉色 */
+  filter: blur(20px);
+  opacity: 0.6;
+  z-index: 1;
+  animation: pulseGlow 3s infinite alternate;
+}
+@keyframes pulseGlow {
+  0% { transform: scale(0.9); opacity: 0.4; }
+  100% { transform: scale(1.2); opacity: 0.8; }
+}
+
+/* 大标题：极大、极细、极简 */
+.hero-name {
+  font-size: 4rem;
+  font-weight: 700;
+  letter-spacing: 4px;
+  margin: 0 0 15px 0;
+  text-transform: uppercase;
+  text-shadow: 0 10px 30px rgba(0,0,0,0.5); /* 阴影替代卡片背景 */
+}
+
+/* 签名：优雅的衬线或细体 */
+.hero-motto {
+  font-size: 1.2rem;
+  font-weight: 300;
+  letter-spacing: 2px;
+  margin-bottom: 40px;
+  opacity: 0.9;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+/* Meta 信息：融合二次元与高级感 */
+.hero-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+.meta-item {
+  padding: 4px 12px;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 20px;
+  background: rgba(0,0,0,0.2);
+  backdrop-filter: blur(4px); /* 仅在小标签上使用微弱的毛玻璃 */
+}
+.meta-divider {
+  width: 4px; height: 4px;
+  background: #fff;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+/* 5. 滚动提示 */
+.scroll-down {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  transition: color 0.3s;
+}
+.scroll-down:hover {
+  color: #fff;
+}
+.scroll-text {
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.scroll-arrow {
+  font-size: 20px;
+  animation: floatDown 2s infinite;
+}
+@keyframes floatDown {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(10px); opacity: 1; }
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .hero-name { font-size: 2.5rem; letter-spacing: 2px; }
+  .hero-motto { font-size: 1rem; }
+  .hero-meta { flex-direction: column; gap: 10px; border: none; background: transparent; }
+  .meta-divider { display: none; }
+  .meta-item { border: none; padding: 0; background: transparent; backdrop-filter: none; }
 }
 </style>

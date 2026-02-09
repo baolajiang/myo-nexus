@@ -126,7 +126,7 @@
   import {getCommentsByArticle, publishComment,getCount} from '@/api/comment'
 
   import default_avatar from '@/assets/img/tx.gif'
-
+  import { loadProgressiveImage, getThumbnailUrl } from "@/utils/progressive"; // 引入工具
   export default {
     name: 'BlogView',
     created() {
@@ -196,117 +196,167 @@
       }
     },
     methods: {
-		sss(){
-			this.$router.back()
-		},
-      // 接收三个参数：类型、ID、名称
-      tagOrCategory(type, id) {
-        // 核心判断逻辑：
-        // 如果文章是加密状态 (viewKeys == 1) 并且 用户未登录 (!token)
-        // 后端传过来的 viewKeys 可能是字符串 "1" 也可能是数字 1，使用 == 比较保险
-        if (this.article.viewKeys == 1 && !this.$store.state.token) {
-
-          this.$myMessage({
-            type: 'warning',
-            content: '该信息仅对登录用户开放，请先登录!',
-            duration: 3000
-          })
-
-          // 跳转登录页
-          this.$router.push({path: '/login'})
-          return;
-        }
-
-        // 其他情况（公开文章或已登录用户），允许跳转
-        this.$router.push({path: `/${type}/${id}`})
+      sss(){
+        this.$router.back()
       },
-      editArticle() {
-        this.$router.push({path: `/write/${this.article.id}`})
-      },
-      getArticle() {
-        let that = this
-        viewArticle(that.$route.params.id,that.$store.state.token).then(data => {
+        // 接收三个参数：类型、ID、名称
+        tagOrCategory(type, id) {
+          // 核心判断逻辑：
+          // 如果文章是加密状态 (viewKeys == 1) 并且 用户未登录 (!token)
+          // 后端传过来的 viewKeys 可能是字符串 "1" 也可能是数字 1，使用 == 比较保险
+          if (this.article.viewKeys == 1 && !this.$store.state.token) {
 
-          Object.assign(that.article, data.data)
-		  const param = {'name' : that.article.id}
-
-
-          that.article.editor.value = data.data.body.content
-
-          that.getCommentsByArticle();
-		  that.queryCount();
-        }).catch(error => {
-          if (error !== 'error') {
-            that.$myMessage({
-              type: 'error',
-              content: '文章加载失败',
+            this.$myMessage({
+              type: 'warning',
+              content: '该信息仅对登录用户开放，请先登录!',
               duration: 3000
             })
-          }
-        })
-      },
-	  open5() {
-			this.$notify.info({
-			  title: '博客提示',
-			  message: '评论暂时关闭',
-			  type: 'warning'
-			});
-	  },
-      publishComment() {
-        let that = this
 
-        // 添加非空校验
-        if (!that.comment.content || !that.comment.content.trim()) {
-          that.$myMessage({type: 'warning', content: '评论内容不能为空'})
-          return
-        }
-
-        that.comment.article.id = that.article.id
-        let parms = {articleId:that.article.id,content:that.comment.content}
-        publishComment(parms,this.$store.state.token).then(data => {
-          if(data.success){
-            that.$myMessage({
-              type: 'success', content: '评论成功', showClose: true
-            })
-            that.comment.content = ''
-			      that. getCommentsByArticle()//刷新评论区
-          }else{
-               that.$myMessage({type: 'error', content: data.msg, showClose: true})
+            // 跳转登录页
+            this.$router.push({path: '/login'})
+            return;
           }
 
-        }).catch(error => {
-          if (error !== 'error') {
-            that.$myMessage({type: 'error', content: error, showClose: true})
-          }
-        })
-      },
-	  //评论区
-      getCommentsByArticle() {
-        let that = this
-        getCommentsByArticle(that.article.id).then(data => {
-          if(data.success){
-               that.comments = data.data
-          }else{
-             that.$message({type: 'error', message: '评论加载失败', showClose: true})
-          }
-        }).catch(error => {
-          if (error !== 'error') {
-            that.$message({type: 'error', message: '评论加载失败', showClose: true})
-          }
-        })
-      },
-      commentCountsIncrement() {
-        this.getCommentsByArticle();
-      },
-	  queryCount(){
-		let that = this;
-		getCount(that.article.id).then(data =>{
-			that.article.count=data.data.length;
-		}).catch(error=>{
-			console.debug(error)
-		})
+          // 其他情况（公开文章或已登录用户），允许跳转
+          this.$router.push({path: `/${type}/${id}`})
+        },
+        editArticle() {
+          this.$router.push({path: `/write/${this.article.id}`})
+        },
+        getArticle() {
+          let that = this
+          viewArticle(that.$route.params.id,that.$store.state.token).then(data => {
+            Object.assign(that.article, data.data)
+        const param = {'name' : that.article.id}
 
-	  }
+
+            that.article.editor.value = data.data.body.content
+            // 手动处理文章内的图片
+            that.handleArticleImages();
+            that.getCommentsByArticle();
+
+        that.queryCount();
+          }).catch(error => {
+            if (error !== 'error') {
+              that.$myMessage({
+                type: 'error',
+                content: '文章加载失败',
+                duration: 3000
+              })
+            }
+          })
+        },
+      open5() {
+        this.$notify.info({
+          title: '博客提示',
+          message: '评论暂时关闭',
+          type: 'warning'
+        });
+      },
+        publishComment() {
+          let that = this
+
+          // 添加非空校验
+          if (!that.comment.content || !that.comment.content.trim()) {
+            that.$myMessage({type: 'warning', content: '评论内容不能为空'})
+            return
+          }
+
+          that.comment.article.id = that.article.id
+          let parms = {articleId:that.article.id,content:that.comment.content}
+          publishComment(parms,this.$store.state.token).then(data => {
+            if(data.success){
+              that.$myMessage({
+                type: 'success', content: '评论成功', showClose: true
+              })
+              that.comment.content = ''
+              that. getCommentsByArticle()//刷新评论区
+            }else{
+                 that.$myMessage({type: 'error', content: data.msg, showClose: true})
+            }
+
+          }).catch(error => {
+            if (error !== 'error') {
+              that.$myMessage({type: 'error', content: error, showClose: true})
+            }
+          })
+        },
+      //评论区
+        getCommentsByArticle() {
+          let that = this
+          getCommentsByArticle(that.article.id).then(data => {
+            if(data.success){
+                 that.comments = data.data
+            }else{
+               that.$message({type: 'error', message: '评论加载失败', showClose: true})
+            }
+          }).catch(error => {
+            if (error !== 'error') {
+              that.$message({type: 'error', message: '评论加载失败', showClose: true})
+            }
+          })
+        },
+        commentCountsIncrement() {
+          this.getCommentsByArticle();
+        },
+      queryCount(){
+      let that = this;
+      getCount(that.article.id).then(data =>{
+        that.article.count=data.data.length;
+      }).catch(error=>{
+        console.debug(error)
+      })
+      },
+      //手动处理文章内的图片
+      handleArticleImages() {
+        this.$nextTick(() => {
+          // 1. 找到文章内容容器 (注意 class 名要对应 html 里的)
+          const contentBox = this.$el.querySelector('.me-view-content');
+          if (!contentBox) return;
+
+          // 2. 找到里面所有的 img 标签
+          const imgs = contentBox.querySelectorAll('img');
+
+          imgs.forEach(img => {
+            // 防止重复处理 (如果用户来回切换)
+            if (img.dataset.isProgressive) return;
+
+            const originalSrc = img.src;
+            if (!originalSrc) return;
+
+            // 3. 标记已处理
+            img.dataset.isProgressive = 'true';
+
+            // 4. 计算缩略图地址
+            const thumbSrc = getThumbnailUrl(originalSrc);
+
+            // 5. 核心变身逻辑
+            // 先加上“模糊”类名
+            img.classList.add('img-loading');
+
+            // 尝试显示缩略图
+            // (为了防止缩略图不存在导致裂图，我们做一个容错)
+            const tempImg = new Image();
+            tempImg.src = thumbSrc;
+
+            tempImg.onload = () => {
+              // 缩略图存在：显示缩略图，保持模糊
+              if(img.classList.contains('img-loading')) {
+                img.src = thumbSrc;
+              }
+            };
+
+            // 6. 开始加载原图 (使用之前的工具函数)
+            loadProgressiveImage(originalSrc, (currentUrl, isLoaded) => {
+              if (isLoaded) {
+                // 原图加载完毕！
+                img.src = currentUrl;
+                img.classList.remove('img-loading'); // 去掉模糊，变清晰
+              }
+            });
+          });
+        });
+      },
     },
     components: {
       'markdown-editor': MarkdownEditor,
@@ -421,6 +471,20 @@
     margin: 20px 0;
     border-radius: 4px;
     overflow: hidden;
+  }
+
+  /* 文章图片渐进式加载样式 */
+  .me-view-content img {
+    transition: filter 0.6s ease, transform 0.6s ease;
+    will-change: transform, filter;
+    /* 限制一下最大宽度，防止图片太大撑破布局，这也是好习惯 */
+    max-width: 100%;
+  }
+
+  .me-view-content img.img-loading {
+    filter: blur(15px);
+    /* 稍微放大一点点，防止模糊边缘发白 */
+    transform: scale(1.02);
   }
 
 
