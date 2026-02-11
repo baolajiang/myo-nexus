@@ -42,7 +42,7 @@
 
 ---
 
-## 🛠️ 快速上手指南
+## 快速上手指南
 
 ### 1. 后端环境配置 (blog-api)
 <blockquote style="padding: 10px; background-color: #f9f9f9; border-left: 5px solid #2196F3;">
