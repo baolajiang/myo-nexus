@@ -1,47 +1,22 @@
 <template>
   <div class="ethereal-hero">
-
     <div class="hero-bg" :style="{ backgroundImage: `url(${bgImage})` }"></div>
 
     <div class="hero-overlay"></div>
 
-    <canvas ref="canvasBg" class="hero-canvas"></canvas>
+    <canvas ref="canvasBg" class="canvas-layer bg-canvas"></canvas>
 
-    <div class="hero-content">
-
-      <div class="avatar-wrap">
-        <img :src="$store.state.avatar || defaultAvatar" class="avatar" alt="avatar" />
-        <div class="avatar-glow"></div>
-      </div>
-
-      <h1 class="hero-name">{{ $store.state.name || "Master" }}</h1>
-
-      <div class="hero-motto">
-        <span class="type-text">{{ displayedText }}</span><span class="cursor" v-show="showCursor">|</span>
-      </div>
-
-      <div class="hero-meta">
-        <span class="meta-item">Lv.7</span>
-        <span class="meta-divider"></span>
-        <span class="meta-item">Front-End Developer</span>
-        <span class="meta-divider"></span>
-        <span class="meta-item">ACGN Lover</span>
-      </div>
-
-    </div>
+    <canvas ref="canvasText" class="canvas-layer text-canvas"></canvas>
 
     <div class="scroll-down" @click="scrollDown">
-      <span class="scroll-text">Discover</span>
+      <span class="scroll-text">Start Reading</span>
       <i class="el-icon-arrow-down scroll-arrow"></i>
     </div>
-
   </div>
 </template>
 
 <script>
-// 使用 require 确保静态资源路径在 webpack 打包后正确
-import defaultAvatarImg from '@/assets/img/default_avatar.png';
-// 你的日落背景图
+// 请确保这里的路径是你项目中正确的图片路径
 import bgImg from '../../../static/img/anime-sunset-art-wallpaper-2560x1080_14.jpg';
 
 export default {
@@ -49,147 +24,215 @@ export default {
   data() {
     return {
       bgImage: bgImg,
-      defaultAvatar: defaultAvatarImg,
+      width: 0,
+      height: 0,
+      animationFrameId: null,
 
-      // 打字机状态
-      fullText: "There is always light behind the clouds.", // 你的签名
-      displayedText: "",
-      showCursor: true,
+      // --- 组1：背景星尘参数 (氛围) ---
+      bgCtx: null,
+      bgParticles: [],
 
-      // Canvas 粒子数据
-      canvas: null,
-      ctx: null,
-      particles: [],
-      animationFrameId: null
+      // --- 组2：文字粒子参数 (交互) ---
+      textCtx: null,
+      textParticles: [],
+      // radius 改为 20，只有鼠标非常靠近时才触发，消除"圆圈感"
+      mouse: { x: -1000, y: -1000, radius: 20 },
+
+      heroText: "测试文本", // 博客标题
+      textSize: 100, // 字号
     };
   },
   mounted() {
-    this.startTypewriter();
-    this.initCanvas();
-    window.addEventListener('resize', this.resizeCanvas);
+    this.init();
+    window.addEventListener('resize', this.handleResize);
+    window.addEventListener('mousemove', this.handleMouseMove);
   },
   beforeDestroy() {
-    window.removeEventListener('resize', this.resizeCanvas);
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-    }
+    window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener('mousemove', this.handleMouseMove);
+    cancelAnimationFrame(this.animationFrameId);
   },
   methods: {
-    // 1. 极简打字机效果
-    startTypewriter() {
-      let index = 0;
-      const typeSpeed = 100; // 打字速度
+    init() {
+      this.width = window.innerWidth;
+      this.height = window.innerHeight;
 
-      const typeInterval = setInterval(() => {
-        if (index < this.fullText.length) {
-          this.displayedText += this.fullText.charAt(index);
-          index++;
-        } else {
-          clearInterval(typeInterval);
-          // 打字完成后让光标继续闪烁
-          setInterval(() => {
-            this.showCursor = !this.showCursor;
-          }, 500);
-        }
-      }, typeSpeed);
+      // 1. 初始化背景 Canvas
+      const cvs1 = this.$refs.canvasBg;
+      cvs1.width = this.width;
+      cvs1.height = this.height;
+      this.bgCtx = cvs1.getContext('2d');
+
+      // 2. 初始化文字 Canvas
+      const cvs2 = this.$refs.canvasText;
+      cvs2.width = this.width;
+      cvs2.height = this.height;
+      // willReadFrequently 优化频繁读取操作
+      this.textCtx = cvs2.getContext('2d', { willReadFrequently: true });
+
+      this.createBgParticles();
+      this.createTextParticles();
+      this.animate();
     },
 
-    // 2. 初始化 Canvas (唯美星尘粒子)
-    initCanvas() {
-      this.canvas = this.$refs.canvasBg;
-      this.ctx = this.canvas.getContext('2d');
-      this.resizeCanvas();
-      this.createParticles();
-      this.animateParticles();
-    },
-
-    resizeCanvas() {
-      if (!this.canvas) return;
-      this.canvas.width = window.innerWidth;
-      this.canvas.height = window.innerHeight;
-    },
-
-    createParticles() {
-      const particleCount = 80; // 粒子数量
-      for (let i = 0; i < particleCount; i++) {
-        this.particles.push({
-          x: Math.random() * this.canvas.width,
-          y: Math.random() * this.canvas.height,
-          size: Math.random() * 2.5 + 0.5, // 大小
-          speedX: Math.random() * 0.5 - 0.25, // 左右漂移
-          speedY: Math.random() * -1 - 0.2,   // 向上漂浮
-          opacity: Math.random() * 0.5 + 0.1,
-          glow: Math.random() > 0.5 ? '#fb7299' : '#ffffff' // 你的主题粉色与白色交替
+    // --- 背景星尘逻辑 (保持唯美风格) ---
+    createBgParticles() {
+      this.bgParticles = [];
+      const count = 60;
+      for (let i = 0; i < count; i++) {
+        this.bgParticles.push({
+          x: Math.random() * this.width,
+          y: Math.random() * this.height,
+          size: Math.random() * 2 + 0.5,
+          speedY: Math.random() * -0.5 - 0.2, // 缓慢上升
+          opacity: Math.random() * 0.5 + 0.2,
+          color: Math.random() > 0.6 ? '251,114,153' : '255,255,255'
         });
       }
     },
 
-    animateParticles() {
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // --- 文字粒子逻辑 (采样) ---
+    createTextParticles() {
+      this.textParticles = [];
 
-      for (let i = 0; i < this.particles.length; i++) {
-        let p = this.particles[i];
+      // 1. 绘制文字
+      this.textCtx.font = `900 ${this.textSize}px 'Montserrat', sans-serif`;
+      this.textCtx.fillStyle = 'white';
+      this.textCtx.textAlign = 'center';
+      this.textCtx.textBaseline = 'middle';
+      this.textCtx.fillText(this.heroText, this.width / 2, this.height / 2);
 
-        // 绘制粒子 (带发光效果)
-        this.ctx.beginPath();
-        this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        this.ctx.fillStyle = `rgba(${p.glow === '#fb7299' ? '251,114,153' : '255,255,255'}, ${p.opacity})`;
-        this.ctx.shadowBlur = 10;
-        this.ctx.shadowColor = p.glow;
-        this.ctx.fill();
+      // 2. 采样像素
+      const imgData = this.textCtx.getImageData(0, 0, this.width, this.height).data;
+      this.textCtx.clearRect(0, 0, this.width, this.height);
 
-        // 移动粒子
-        p.x += p.speedX;
-        p.y += p.speedY;
-
-        // 如果粒子飘出屏幕顶部，让它从底部重新出现
-        if (p.y < 0) {
-          p.y = this.canvas.height;
-          p.x = Math.random() * this.canvas.width;
+      // 3. 生成粒子
+      const gap = 4; // 采样间隔
+      for (let y = 0; y < this.height; y += gap) {
+        for (let x = 0; x < this.width; x += gap) {
+          const index = (y * this.width + x) * 4 + 3;
+          if (imgData[index] > 128) {
+            this.textParticles.push({
+              x: x,
+              y: y,
+              originX: x,
+              originY: y,
+              color: 'rgba(255, 255, 255, 0.95)',
+              size: Math.random() * 1.5 + 1,
+              vx: 0,
+              vy: 0,
+              friction: Math.random() * 0.05 + 0.90,
+              ease: Math.random() * 0.05 + 0.05
+            });
+          }
         }
-        // 左右出界处理
-        if (p.x > this.canvas.width || p.x < 0) {
-          p.speedX = -p.speedX;
+      }
+    },
+
+    // --- 动画循环 ---
+    animate() {
+      this.bgCtx.clearRect(0, 0, this.width, this.height);
+      this.textCtx.clearRect(0, 0, this.width, this.height);
+
+      // 1. 绘制背景星尘
+      for (let p of this.bgParticles) {
+        this.bgCtx.beginPath();
+        this.bgCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        this.bgCtx.fillStyle = `rgba(${p.color}, ${p.opacity})`;
+        this.bgCtx.fill();
+        p.y += p.speedY;
+        if (p.y < 0) {
+          p.y = this.height;
+          p.x = Math.random() * this.width;
         }
       }
 
-      this.animationFrameId = requestAnimationFrame(this.animateParticles);
+      // 2. 绘制文字粒子 (核心交互)
+      // 开启发光，增加氛围
+      this.textCtx.shadowBlur = 4;
+      this.textCtx.shadowColor = "rgba(251,114,153,0.3)";
+
+      for (let p of this.textParticles) {
+        // --- 物理计算 ---
+        const dx = this.mouse.x - p.x;
+        const dy = this.mouse.y - p.y;
+        // 不开方，用距离平方比较，性能更好
+        const distSq = dx * dx + dy * dy;
+        const radiusSq = this.mouse.radius * this.mouse.radius;
+
+        // 【关键逻辑】：只有距离小于 30px (radius) 时才受力
+        if (distSq < radiusSq) {
+          const dist = Math.sqrt(distSq);
+          const force = (this.mouse.radius - dist) / this.mouse.radius;
+          const angle = Math.atan2(dy, dx);
+
+          // 施加推力 + 随机扰动 (消除整齐的圆圈边缘)
+          // 这里的 Math.random() 是关键，让粒子像沙子一样散开，而不是像一个圈
+          const scatterX = Math.cos(angle) * force * 15 + (Math.random() - 0.5) * 5;
+          const scatterY = Math.sin(angle) * force * 15 + (Math.random() - 0.5) * 5;
+
+          p.vx -= scatterX;
+          p.vy -= scatterY;
+        }
+
+        // 回归逻辑
+        p.vx += (p.originX - p.x) * p.ease;
+        p.vy += (p.originY - p.y) * p.ease;
+
+        // 摩擦力
+        p.vx *= p.friction;
+        p.vy *= p.friction;
+
+        // 更新位置
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // 绘制矩形粒子 (比画圆性能好，且更有数码感)
+        this.textCtx.fillStyle = p.color;
+        this.textCtx.fillRect(p.x, p.y, p.size, p.size);
+      }
+
+      this.animationFrameId = requestAnimationFrame(this.animate);
     },
 
-    // 3. 平滑滚动
+    handleMouseMove(e) {
+      // 记录鼠标位置
+      this.mouse.x = e.clientX;
+      this.mouse.y = e.clientY;
+    },
+    handleResize() {
+      if (this.resizeTimer) clearTimeout(this.resizeTimer);
+      this.resizeTimer = setTimeout(() => {
+        this.init();
+      }, 200);
+    },
     scrollDown() {
-      window.scrollTo({
-        top: window.innerHeight,
-        behavior: 'smooth'
-      });
+      window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
     }
   }
 };
 </script>
 
 <style scoped>
-/* 引入谷歌字体，打造 d-d.design 那种高级排版感 */
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&family=Noto+Serif+SC:wght@300;700&display=swap');
+/* 引入 nice 的字体 */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap');
 
 .ethereal-hero {
   position: relative;
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Montserrat', 'Noto Serif SC', sans-serif;
+  user-select: none; /* 禁止选中文本，保证交互体验 */
+  font-family: 'Montserrat', sans-serif;
 }
 
-/* 1. 背景层 */
+/* 背景层 */
 .hero-bg {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
   background-size: cover;
   background-position: center;
   z-index: 1;
-  /* 极其缓慢的放大动画，增加沉浸感 */
   animation: bgZoom 30s linear infinite alternate;
 }
 @keyframes bgZoom {
@@ -197,144 +240,44 @@ export default {
   100% { transform: scale(1.1); }
 }
 
-/* 2. 遮罩层 (至关重要：压暗背景，让白色文字发光) */
+/* 遮罩层 */
 .hero-overlay {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
   z-index: 2;
-  /* 顶部透明，底部深色渐变，融合你的网站背景色 */
-  background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.6) 100%);
+  background: rgba(0,0,0,0.3); /* 纯粹压暗一点，突出文字 */
 }
 
-/* 3. Canvas 粒子层 */
-.hero-canvas {
+/* Canvas 层 */
+.canvas-layer {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
-  z-index: 3;
-  pointer-events: none; /* 防止遮挡点击事件 */
 }
+.bg-canvas { z-index: 3; pointer-events: none; }
+.text-canvas { z-index: 4; }
 
-/* 4. 内容层 */
-.hero-content {
-  position: relative;
-  z-index: 10;
-  text-align: center;
-  color: #fff;
-  padding: 0 20px;
-  /* 入场上浮动画 */
-  animation: contentFadeIn 1.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-  opacity: 0;
-  transform: translateY(30px);
-}
-@keyframes contentFadeIn {
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* --- 排版细节 --- */
-
-/* 头像：极简描边，自带光晕 */
-.avatar-wrap {
-  position: relative;
-  width: 100px;
-  height: 100px;
-  margin: 0 auto 20px;
-  border-radius: 50%;
-}
-.avatar {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(255,255,255,0.8);
-  position: relative;
-  z-index: 2;
-  transition: transform 0.5s;
-}
-.avatar-wrap:hover .avatar {
-  transform: rotate(360deg);
-}
-.avatar-glow {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  border-radius: 50%;
-  background: #fb7299; /* 你的主题粉色 */
-  filter: blur(20px);
-  opacity: 0.6;
-  z-index: 1;
-  animation: pulseGlow 3s infinite alternate;
-}
-@keyframes pulseGlow {
-  0% { transform: scale(0.9); opacity: 0.4; }
-  100% { transform: scale(1.2); opacity: 0.8; }
-}
-
-/* 大标题：极大、极细、极简 */
-.hero-name {
-  font-size: 4rem;
-  font-weight: 700;
-  letter-spacing: 4px;
-  margin: 0 0 15px 0;
-  text-transform: uppercase;
-  text-shadow: 0 10px 30px rgba(0,0,0,0.5); /* 阴影替代卡片背景 */
-}
-
-/* 签名：优雅的衬线或细体 */
-.hero-motto {
-  font-size: 1.2rem;
-  font-weight: 300;
-  letter-spacing: 2px;
-  margin-bottom: 40px;
-  opacity: 0.9;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-}
-
-/* Meta 信息：融合二次元与高级感 */
-.hero-meta {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
-  font-size: 14px;
-  font-weight: 400;
-  letter-spacing: 1px;
-  opacity: 0.8;
-}
-.meta-item {
-  padding: 4px 12px;
-  border: 1px solid rgba(255,255,255,0.3);
-  border-radius: 20px;
-  background: rgba(0,0,0,0.2);
-  backdrop-filter: blur(4px); /* 仅在小标签上使用微弱的毛玻璃 */
-}
-.meta-divider {
-  width: 4px; height: 4px;
-  background: #fff;
-  border-radius: 50%;
-  opacity: 0.5;
-}
-
-/* 5. 滚动提示 */
+/* 滚动提示 */
 .scroll-down {
   position: absolute;
   bottom: 30px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255,255,255,0.8);
   cursor: pointer;
-  transition: color 0.3s;
+  text-align: center;
+  transition: all 0.3s;
 }
 .scroll-down:hover {
   color: #fff;
+  text-shadow: 0 0 10px rgba(255,255,255,0.5);
 }
 .scroll-text {
-  font-size: 12px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  display: block;
+  font-size: 10px;
+  letter-spacing: 3px;
   margin-bottom: 5px;
+  text-transform: uppercase;
 }
 .scroll-arrow {
   font-size: 20px;
@@ -342,15 +285,6 @@ export default {
 }
 @keyframes floatDown {
   0%, 100% { transform: translateY(0); opacity: 0.5; }
-  50% { transform: translateY(10px); opacity: 1; }
-}
-
-/* 响应式 */
-@media (max-width: 768px) {
-  .hero-name { font-size: 2.5rem; letter-spacing: 2px; }
-  .hero-motto { font-size: 1rem; }
-  .hero-meta { flex-direction: column; gap: 10px; border: none; background: transparent; }
-  .meta-divider { display: none; }
-  .meta-item { border: none; padding: 0; background: transparent; backdrop-filter: none; }
+  50% { transform: translateY(8px); opacity: 1; }
 }
 </style>
