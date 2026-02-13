@@ -24,7 +24,21 @@
         @mouseenter.stop="setHoverLevel(2)"
         @mouseleave.stop="setHoverLevel(1)"
       >
-        <div class="img-mask">
+        <div class="img-mask" style="position: relative;">
+
+          <el-skeleton
+            v-if="!isImgRendered"
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;"
+            animated
+          >
+            <template slot="template">
+              <el-skeleton-item
+                variant="image"
+                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 0;"
+              />
+            </template>
+          </el-skeleton>
+
           <img
             :src="currentImg"
             class="luna-img"
@@ -32,6 +46,9 @@
             ref="img"
             alt="cover"
             loading="lazy"
+            @load="isImgRendered = true"
+            @error="isImgRendered = true"
+            :style="{ opacity: isImgRendered ? 1 : 0 }"
           >
         </div>
         <div class="gold-sheen" ref="sheen"></div>
@@ -87,6 +104,7 @@ export default {
       hoverLevel: 0,
       imgLoaded: false, // 标记大图是否加载完成
       currentImg: '',   // 当前显示的图片链接
+      isImgRendered: false // 专门用来记录浏览器是否真把图片下载并渲染出来了
     }
   },
   computed: {
@@ -326,6 +344,7 @@ export default {
 .luna-img { width: 100%; height: 100%; object-fit: cover; will-change: transform;
   transition: filter 0.6s ease-in-out, transform 0.6s ease;
 }
+
 .luna-img.is-loading{
   filter: blur(15px);
   /* 轻微放大图片，防止模糊导致的边缘白边问题
@@ -379,8 +398,6 @@ export default {
   -webkit-line-clamp: 1;
   overflow: hidden;
 
-
-
 }
 
 .luna-summary {
@@ -430,4 +447,5 @@ export default {
   .gold-border-overlay { border-radius: 4px 4px 0 0; }
   .text-panel { padding: 20px; }
 }
+
 </style>

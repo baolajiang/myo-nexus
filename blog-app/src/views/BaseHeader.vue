@@ -382,8 +382,43 @@ export default {
     afterEnter(el) {if (this.$refs.smoothBox) { this.$refs.smoothBox.style.height = 'auto'; }},
     onLogoEnter() { gsap.to(this.$refs.moonIcon, { rotation: -20, color: '#d4af37', duration: 0.4, ease: 'back.out' }); gsap.to(this.$refs.sakuraIcon, { rotation: 20, color: '#ffb7c5', duration: 0.4, ease: 'back.out' }); gsap.to(this.$refs.logoText, { color: '#d4af37', duration: 0.4 }); },
     onLogoLeave() { gsap.to(this.$refs.moonIcon, { rotation: 0, color: '#4a4a4a', duration: 0.4 }); gsap.to(this.$refs.sakuraIcon, { rotation: 0, color: '#4a4a4a', duration: 0.4 }); gsap.to(this.$refs.logoText, { color: '#4a4a4a', duration: 0.4 }); },
-    onNavEnter(e) { const target = e.currentTarget; const enText = target.querySelector('.nav-text-en'); const cnText = target.querySelector('.nav-text-cn'); const underline = target.querySelector('.nav-underline'); gsap.killTweensOf([enText, cnText, underline]); gsap.to(enText, { y: -5, color: '#d4af37', fontWeight: '700', duration: 0.3, ease: 'power2.out' }); gsap.to(cnText, { y: 2, opacity: 1, color: '#888', duration: 0.3, ease: 'power2.out' }); gsap.to(underline, { width: '100%', opacity: 1, duration: 0.4, ease: 'power2.out' }); },
-    onNavLeave(e) { const target = e.currentTarget; const enText = target.querySelector('.nav-text-en'); const cnText = target.querySelector('.nav-text-cn'); const underline = target.querySelector('.nav-underline'); gsap.killTweensOf([enText, cnText, underline]); gsap.to(enText, { y: 0, color: '#555', fontWeight: '600', duration: 0.3 }); gsap.to(cnText, { y: 10, opacity: 0, duration: 0.3 }); gsap.to(underline, { width: '0%', opacity: 0, duration: 0.3 }); },
+    onNavEnter(e) {
+      const target = e.currentTarget;
+      const enText = target.querySelector('.nav-text-en');
+      const cnText = target.querySelector('.nav-text-cn');
+      const underline = target.querySelector('.nav-underline');
+      gsap.killTweensOf([enText, cnText, underline]);
+
+      if (window.innerWidth <= 1000) {
+        // 小屏幕设备：仅改变中文颜色和激活下划线
+        gsap.to(cnText, { color: '#d4af37', duration: 0.3 });
+        gsap.to(underline, { width: '100%', opacity: 1, duration: 0.4, ease: 'power2.out' });
+      } else {
+        // 大屏幕设备：保留原有的上下浮动动画
+        gsap.to(enText, { y: -5, color: '#d4af37', fontWeight: '700', duration: 0.3, ease: 'power2.out' });
+        gsap.to(cnText, { y: 2, opacity: 1, color: '#888', duration: 0.3, ease: 'power2.out' });
+        gsap.to(underline, { width: '100%', opacity: 1, duration: 0.4, ease: 'power2.out' });
+      }
+    },
+
+    onNavLeave(e) {
+      const target = e.currentTarget;
+      const enText = target.querySelector('.nav-text-en');
+      const cnText = target.querySelector('.nav-text-cn');
+      const underline = target.querySelector('.nav-underline');
+      gsap.killTweensOf([enText, cnText, underline]);
+
+      if (window.innerWidth <= 1000) {
+        // 小屏幕设备：仅恢复中文颜色和隐藏下划线，绝对不修改透明度
+        gsap.to(cnText, { color: '#555', duration: 0.3 });
+        gsap.to(underline, { width: '0%', opacity: 0, duration: 0.3 });
+      } else {
+        // 大屏幕设备：恢复原来的隐藏逻辑
+        gsap.to(enText, { y: 0, color: '#555', fontWeight: '600', duration: 0.3 });
+        gsap.to(cnText, { y: 10, opacity: 0, duration: 0.3 });
+        gsap.to(underline, { width: '0%', opacity: 0, duration: 0.3 });
+      }
+    },
     handleScroll() { if (!this.ticking) { window.requestAnimationFrame(() => { const scrollTop = window.pageYOffset || document.documentElement.scrollTop; const shouldScroll = scrollTop > 60; if (this.isScrolled !== shouldScroll) { this.isScrolled = shouldScroll } this.ticking = false }); this.ticking = true } },
     animateToCapsule() { if (this.isMobileMenuOpen) return; gsap.to(this.$refs.headerWrapper, { top: 15, width: '95%', maxWidth: '1200px', height: '60px', borderRadius: '30px', backgroundColor: 'rgba(255, 250, 245, 0.98)', border: '1px solid rgba(212, 175, 55, 0.3)', boxShadow: '0 8px 30px rgba(212, 175, 55, 0.15)', duration: 0.6, ease: 'power3.out' }); gsap.to(this.$refs.goldLine, { opacity: 0, duration: 0.3 }); },
     animateToFull(immediate = false) { const duration = immediate ? 0 : 0.6; gsap.to(this.$refs.headerWrapper, { top: 0, width: '100%', maxWidth: '100%', height: '65px', borderRadius: 0, backgroundColor: 'rgba(255, 250, 245, 0.8)', border: 'none', borderBottom: '1px solid rgba(212, 175, 55, 0.1)', boxShadow: 'none', duration: duration, ease: 'power3.out' }); gsap.to(this.$refs.goldLine, { opacity: 1, duration: 0.3 }); },
@@ -696,7 +731,19 @@ a { text-decoration: none; }
 }
 @media (min-width: 769px) { .hidden-sm-and-up { display: none !important; } }
 @media (max-width: 1280px) { .header-content { padding: 0 15px; } .nav-list { gap: 15px; } .logo-text { font-size: 20px; } }
-@media (max-width: 1000px) { .nav-list { gap: 10px; } .nav-text-en { display: none; } .nav-text-cn { position: static; opacity: 1; transform: none; font-size: 14px; color: #555; } .nav-item { height: 60px; justify-content: center; } }
+@media (max-width: 1000px) {
+  .nav-list { gap: 10px; }
+  .nav-text-en { display: none !important; }
+  .nav-text-cn {
+    position: static !important;
+    opacity: 1 !important;
+    transform: none !important;
+    font-size: 14px;
+    color: #555;
+  }
+  .nav-item.active .nav-text-cn { color: #d4af37 !important; font-weight: 700; }
+  .nav-item { height: 60px; justify-content: center; }
+}
 </style>
 
 /* ================= 全局样式 (必须放在不带 scoped 的 style 标签中) ================= */
