@@ -13,7 +13,7 @@ import java.util.Map;
 public class JWTUtils {
 
     // 注意：JJWT 0.10+ 强制要求 HS256 的密钥至少 32 个字符 (256 bits)
-    // 我帮您补全了长度，确保不会报 WeakKeyException
+    // 帮您补全了长度，确保不会报 WeakKeyException
     private static final String jwtToken = "tangmengxi2693398551!@#$$tangmengxi2693398551!@#$$";
 
     // 创建 Key 对象

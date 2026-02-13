@@ -118,7 +118,7 @@ router.beforeEach(async (to, _from, next) => {
     // === 情况 C: 既没 Ticket 也没 Token (非法闯入) ===
     // 拦截！直接踢回前台博客的登录页
     ElMessage.warning('请先登录')
-    //注意：请确保这个地址是你前台博客的真实地址
+    //注意：请确保这个地址是前台博客的真实地址
     window.location.href = frontendLoginUrl
 })
 

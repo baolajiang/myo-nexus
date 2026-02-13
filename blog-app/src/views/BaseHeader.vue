@@ -792,7 +792,7 @@ a { text-decoration: none; }
 
 /* 两种情况下显示图标：
    1. 鼠标悬停在头像盒子上 (.pro-avatar-box:hover)
-   2. 处于编辑模式时 (.is-editing) -> 如果你想编辑模式常亮，加上这个类判断
+   2. 处于编辑模式时 (.is-editing) -> 如果想编辑模式常亮，加上这个类判断
 */
 .pro-avatar-box:hover .pro-avatar-action,
 .is-editing .pro-avatar-action {

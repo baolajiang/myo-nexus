@@ -335,7 +335,7 @@
             img.classList.add('img-loading');
 
             // 尝试显示缩略图
-            // (为了防止缩略图不存在导致裂图，我们做一个容错)
+            // (为了防止缩略图不存在导致裂图，做一个容错)
             const tempImg = new Image();
             tempImg.src = thumbSrc;
 

@@ -54,7 +54,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<Category> findCategoryByIds(Collection<String> ids) {
-        // 使用你已經注入的 categoryMapper
+        // 使用已經注入的 categoryMapper
         return categoryMapper.selectBatchIds(ids);
     }
 

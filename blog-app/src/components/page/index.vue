@@ -16,7 +16,7 @@
 </template>
 
 <script>
-// 请确保这里的路径是你项目中正确的图片路径
+// 请确保这里的路径是项目中正确的图片路径
 import bgImg from '../../../static/img/anime-sunset-art-wallpaper-2560x1080_14.jpg';
 
 export default {

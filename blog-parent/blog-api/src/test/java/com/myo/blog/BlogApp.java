@@ -41,7 +41,7 @@ public class BlogApp {
         // 创建一个新的Random类实例
         Random random = new Random();
 
-        // 这个字符串将保存我们的验证码
+        // 这个字符串将保存验证码
         StringBuilder verificationCode = new StringBuilder();
 
         // 循环6次，每次添加一个0-9的随机数字

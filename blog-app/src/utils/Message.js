@@ -36,7 +36,7 @@ const Message = (options) => {
 
   // 5. 监听组件自身的关闭事件（比如时间到了自动关闭），清理引用
   // 这一步是为了防止：弹窗自然消失后，activeInstance 此时还存着旧引用
-  // 我们稍微 hack 一下 close 方法，或者通过 $watch
+  // 稍微 hack 一下 close 方法，或者通过 $watch
   // 但最简单的方式是重写实例的 close 方法
   const originalClose = instance.close;
   instance.close = function() {

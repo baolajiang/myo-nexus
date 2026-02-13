@@ -72,7 +72,7 @@ public class LoginInterceptor implements HandlerInterceptor {
             return false;
         }
         //登录验证成功，放行
-        //我希望在controller中 直接获取用户的信息 怎么获取?
+        //希望在controller中 直接获取用户的信息 怎么获取?
         UserThreadLocal.put(sysUser);
         return true;
     }

@@ -136,7 +136,7 @@ const route = useRoute()
   align-items: center;
   justify-content: center;
   background-color: #2b3649;
-  /* 確保 Logo 區不會跟著菜單滾動，如果你希望 Logo 固定在頂部，可以加 position: sticky */
+  /* 確保 Logo 區不會跟著菜單滾動，如果希望 Logo 固定在頂部，可以加 position: sticky */
   position: sticky;
   top: 0;
   z-index: 10;

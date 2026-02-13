@@ -67,7 +67,7 @@ const handleLogout = () => {
     // 2. 提示退出成功
     ElMessage.success('退出成功')
 
-    // 3. 强制跳转回前台登录页 (请确保端口号对应你的前台项目)
+    // 3. 强制跳转回前台登录页 (请确保端口号对应前台项目)
     window.location.href = frontendLoginUrl
   }).catch(() => {
     // 取消退出，不做操作

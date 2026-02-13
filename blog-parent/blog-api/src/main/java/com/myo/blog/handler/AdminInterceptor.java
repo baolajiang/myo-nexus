@@ -38,7 +38,7 @@ public class AdminInterceptor implements HandlerInterceptor {
         // 去数据库查这个用户拥有的所有权限
         List<String> permissions = sysUserMapper.findPermissionsByUserId(sysUser.getId());
 
-        // 如果权限列表为空，说明是普通用户（我们在数据库设计时没给普通用户分配任何权限）
+        // 如果权限列表为空，说明是普通用户（在数据库设计时没给普通用户分配任何权限）
         if (permissions == null || permissions.isEmpty()) {
             return sendError(response, ErrorCode.NO_PERMISSION.getCode(), "无权访问，需要管理员权限");
         }

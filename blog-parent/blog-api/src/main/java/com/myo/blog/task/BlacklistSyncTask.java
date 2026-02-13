@@ -38,7 +38,7 @@ public class BlacklistSyncTask {
             // ==========================================
             // 第一步：检查“哨兵旗帜”是否还在
             // ==========================================
-            // BLACKLIST_MARKER_KEY 是我们在项目启动(IpBlacklistRunner)时写入的一个永久 Key (例如 "BAN:IS_LOADED")
+            // BLACKLIST_MARKER_KEY 是在项目启动(IpBlacklistRunner)时写入的一个永久 Key (例如 "BAN:IS_LOADED")
             Boolean hasData = redisTemplate.hasKey(IpBlacklistRunner.BLACKLIST_MARKER_KEY);// 定期检查（哨兵巡逻）
 
             // ==========================================

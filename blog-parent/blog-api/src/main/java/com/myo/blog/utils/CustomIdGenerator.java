@@ -52,7 +52,7 @@ public class CustomIdGenerator implements IdentifierGenerator {
                     prefix = "PERM";     // 权限
                     break;
                 case "UserToken":
-                    // 注意：UserToken 我们之前设的是 INPUT (手动输入)，可能不会走这里
+                    // 注意：UserToken 之前设的是 INPUT (手动输入)，可能不会走这里
                     // 但加上也没坏处，万一以后改策略了呢
                     prefix = "TOKEN";
                     break;
@@ -80,7 +80,7 @@ public class CustomIdGenerator implements IdentifierGenerator {
             }
         }
 
-        // 调用你的序列号生成器
+        // 调用序列号生成器
         return SerialGenerator.generate(prefix);
     }
 }

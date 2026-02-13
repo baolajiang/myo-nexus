@@ -355,9 +355,7 @@ export default {
 .b-tag-checkbox { margin-right: 15px !important; margin-bottom: 5px; }
 .b-final-btn { background: #00aeec; border: none; width: 140px; }
 
-/* 這裡我保持了 320x180 的比例，看起來比較像文章封面，
-   如果你想改回原來的寬度，把 width: 320px 改成 width: 100% 即可，
-   但重點是 loading 不會再全屏了！ */
+
 .cover-uploader {
   width: 320px;
   height: 180px;

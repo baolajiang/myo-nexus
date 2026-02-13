@@ -114,7 +114,7 @@ public class ArticleServiceImpl implements ArticleService {
         List<Article> records = page.getRecords();
 
         // isAuthor 传 false！
-        // 既然查的是“我的文章”，作者肯定是我自己，不需要再去数据库查一遍 User 表（避免了 N+1 问题和密码泄露风险）
+        // 既然查的是“我的文章”，作者肯定是自己，不需要再去数据库查一遍 User 表（避免了 N+1 问题和密码泄露风险）
         List<ArticleVo> articleVoList = copyList(records, true, false);
 
         // 手动填充作者信息
@@ -311,7 +311,7 @@ public class ArticleServiceImpl implements ArticleService {
             }
 
             // 【重點】調用 copy 時，isAuthor 和 isCategory 傳入 false
-            // 這是為了防止 copy 方法內部再去查詢資料庫，我們稍後用 Map 手動賦值
+            // 這是為了防止 copy 方法內部再去查詢資料庫，稍後用 Map 手動賦值
             ArticleVo articleVo = copy(record, isTag, false, isBody, false);
 
             // 手動填入作者信息 (從 Map 獲取，不查庫)

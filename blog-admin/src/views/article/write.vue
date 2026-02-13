@@ -91,7 +91,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import request from '../../utils/request' // 假设你在这个路径
+import request from '../../utils/request'
 import { getArticleDetail } from '../../api/article'
 
 // 路由
@@ -120,7 +120,7 @@ const form = reactive({
 })
 
 // 辅助变量：用于 el-select 多选标签，因为 form.tags 结构是对象数组 [{id:1}, {id:2}]
-// 我们需要一个纯 ID 数组 [1, 2] 来绑定 select
+// 需要一个纯 ID 数组 [1, 2] 来绑定 select
 const selectedTagIds = computed({
   get: () => form.tags.map(t => t.id),
   set: (val) => {
@@ -141,7 +141,7 @@ const tokenHeader = { Authorization: localStorage.getItem('token') }
 
 // --- 生命周期 ---
 onMounted(async () => {
-  // 1. 获取所有分类和标签 (你需要实现这两个接口)
+  // 1. 获取所有分类和标签 (需要实现这两个接口)
   fetchCategories()
   fetchTags()
 
@@ -158,9 +158,9 @@ onMounted(async () => {
 // 加载文章详情
 const loadArticleData = async (id: string) => {
   try {
-    // 复用你已有的 findArticleById 接口
-    // 注意：后台通常用 /admin/article/{id}，如果你复用前台接口也可以，只要权限够
-    // 这里假设你在 api/article.ts 里封装了 getArticleDetail(id)
+    // 复用已有的 findArticleById 接口
+    // 注意：后台通常用 /admin/article/{id}，如果复用前台接口也可以，只要权限够
+    // 这里假设在 api/article.ts 里封装了 getArticleDetail(id)
     const res = await request.post(`/articles/view/${id}`)
     if (res.data.success) {
       const data = res.data.data
