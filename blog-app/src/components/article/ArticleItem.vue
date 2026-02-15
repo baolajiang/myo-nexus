@@ -26,18 +26,7 @@
       >
         <div class="img-mask" style="position: relative;">
 
-          <el-skeleton
-            v-if="!isImgRendered"
-            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;"
-            animated
-          >
-            <template slot="template">
-              <el-skeleton-item
-                variant="image"
-                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 0;"
-              />
-            </template>
-          </el-skeleton>
+          <skeleton :loading="!imgLoaded" />
 
           <img
             :src="currentImg"
@@ -46,8 +35,8 @@
             ref="img"
             alt="cover"
             loading="lazy"
-            @load="isImgRendered = true"
-            @error="isImgRendered = true"
+            @load="onImgLoad"
+            @error="onImgLoad"
             :style="{ opacity: isImgRendered ? 1 : 0 }"
           >
         </div>
@@ -88,7 +77,7 @@
 import { formatTime } from "@/utils/time";
 import { gsap } from "gsap";
 import { loadProgressiveImage } from "@/utils/progressive";
-
+import Skeleton from '@/components/common/Skeleton'
 export default {
   name: 'ArticleItem',
   props: {
@@ -97,6 +86,9 @@ export default {
     id: String, weight: Number, title: String, commentCounts: Number, viewCounts: Number,
     summary: String, author: [String, Object], tags: Array, createDate: String, cover: String,
     index: { type: Number, default: 0 }
+  },
+  components: {
+    Skeleton
   },
   data() {
     return {
@@ -209,7 +201,10 @@ export default {
         // 保持文字高亮
         gsap.to(this.$refs.title, { color: "var(--accent-color)", x: 2, duration: 0.3, overwrite: true });
       }
-    }
+    },
+    onImgLoad() {
+      this.isImgRendered = true;
+    },
   },
   filters: {
     format: formatTime
@@ -305,6 +300,75 @@ export default {
 .petal { position: absolute; font-size: 20px; }
 .p1 { bottom: 0; right: 0; transform: rotate(15deg); }
 .p2 { bottom: 20px; right: 30px; transform: rotate(-10deg) scale(0.8); }
+/* ================= 自定义骨架屏样式 ================= */
+
+/* 骨架屏容器：铺满父容器 */
+.custom-skeleton {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  /* 使用半透明的背景色，基于主题变量 */
+  background-color: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* 骨架屏中间的 Logo */
+.skeleton-logo {
+  width: 60px;
+  height: 60px;
+  color: var(--accent-color); /* 跟随主题的金色 */
+  opacity: 0.2; /* 淡淡的显示 */
+  z-index: 6;
+  animation: pulse 2s infinite ease-in-out;
+}
+
+/* 扫光动画层 */
+.skeleton-shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 7;
+  /* 核心：使用 CSS 变量做渐变，实现从透明 -> 强调色(极淡) -> 透明 的扫光 */
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    var(--accent-alpha) 50%,
+    transparent 70%
+  );
+  transform: skewX(-20deg) translateX(-150%);
+  animation: shimmer 1.5s infinite;
+}
+
+/* ================= 动画定义 ================= */
+
+/* 扫光动画 */
+@keyframes shimmer {
+  0% { transform: skewX(-20deg) translateX(-150%); }
+  100% { transform: skewX(-20deg) translateX(150%); }
+}
+
+/* Logo 呼吸动画 */
+@keyframes pulse {
+  0% { opacity: 0.2; transform: scale(0.95); }
+  50% { opacity: 0.4; transform: scale(1.05); }
+  100% { opacity: 0.2; transform: scale(0.95); }
+}
+
+/* 骨架屏消失时的淡出效果 (配合 Vue transition) */
+.fade-leave-active {
+  transition: opacity 0.5s;
+}
+.fade-leave-to {
+  opacity: 0;
+}
 
 /* 图片区域 */
 .frame-box {

@@ -72,25 +72,66 @@ export default {
         this.resetAndLoad()
       },
       deep: true
+    },
+    // 2. 修改 watch $route：监听路由变化（点击浏览器前进后退时触发）
+    $route(to, from) {
+      if (to.params.page) {
+        this.innerPage.pageNumber = parseInt(to.params.page);
+      } else if (to.query.page) {
+        this.innerPage.pageNumber = parseInt(to.query.page);
+      } else {
+        // 如果没有页码参数（比如回到了默认列表），重置为 1
+        this.innerPage.pageNumber = 1;
+      }
+      this.getArticles();
     }
   },
   created() {
-    this.getArticles()
+    // 优先读取 /articles/page/:page 中的 page
+    const routeParamsPage = this.$route.params.page;
+    // 其次读取 ?page=2 中的 page
+    const routeQueryPage = this.$route.query.page;
+
+    if (routeParamsPage) {
+      this.innerPage.pageNumber = parseInt(routeParamsPage);
+    } else if (routeQueryPage) {
+      this.innerPage.pageNumber = parseInt(routeQueryPage);
+    }
+
+    this.getArticles();
   },
   methods: {
     resetAndLoad() {
       this.noData = false
       this.articles = []
+      // 这里重置时，如果想把 URL 参数也清空，可以处理，或者保持默认
       this.innerPage.pageNumber = 1
       this.getArticles()
     },
 
-    //  修改点 2：移除所有延迟逻辑，直接请求
     handlePageChange(val) {
-      this.innerPage.pageNumber = val
-      // 立即回到顶部
-      window.scrollTo({ top: 0, behavior: 'auto' }) // behavior: 'auto' 瞬间跳回，比 smooth 更快
-      this.getArticles()
+      this.innerPage.pageNumber = val;
+      window.scrollTo({ top: 0, behavior: 'auto' });
+
+      // 获取当前路径，用于判断我们是在哪个页面
+      const currentPath = this.$route.path;
+
+      // 【核心逻辑】判断当前是不是文章归档页
+      // 如果当前路径以 /articles 开头，我们就用 /articles/page/x 这种风格
+      if (currentPath.startsWith('/articles')) {
+        this.$router.push({ path: `/articles/page/${val}` });
+      }
+      // 如果是在首页或其他页面（比如 /tag/java），可能还是保持 ?page=x 比较安全，除非你也给它们配了路由
+      else {
+        this.$router.push({
+          path: this.$route.path,
+          query: { ...this.$route.query, page: val }
+        });
+      }
+
+      // 注意：这里不需要手动调 getArticles，因为 watch $route 会触发它
+      // 但如果你发现反应慢，可以解开下面这行注释，双重保险
+       this.getArticles();
     },
 
     view(id) {
@@ -113,7 +154,6 @@ export default {
           that.total = 0
         }
 
-        //  修改点 3：数据回来直接赋值，不等待
         if (newArticles && newArticles.length > 0) {
           that.articles = newArticles
           that.noData = false

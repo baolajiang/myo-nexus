@@ -193,7 +193,7 @@ export default {
       editFieldMap: { nickname: '名字', email: '郵箱', website: '網站' },
       navItems: [
         { name: '首頁', en: 'Home', path: '/', icon: 'el-icon-s-home' },
-        { name: '文章', en: 'articles', path: '/articles', icon: 'el-icon-document' },
+        { name: '文章', en: 'articles', path: '/articles/page/1', icon: 'el-icon-document' },
         { name: '分類', en: 'Category', path: '/category/all', icon: 'el-icon-menu' },
         { name: '標籤', en: 'Tags', path: '/tag/all', icon: 'el-icon-price-tag' },
         { name: '導航', en: 'Links', path: '/nav', icon: 'el-icon-compass' },

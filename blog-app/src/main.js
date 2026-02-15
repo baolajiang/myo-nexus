@@ -50,8 +50,7 @@ import animate from 'animate.css'
 import nprogress from 'nprogress' // 进度条
 import 'nprogress/nprogress.css' //进度条样式
 import VueCropper from 'vue-cropper' // 引入
-import ProgressiveImg from './components/comment/ProgressiveImg'
-Vue.component('ProgressiveImg', ProgressiveImg)
+
 Vue.use(VueCropper) // 注册
 Vue.use(animate)
 
