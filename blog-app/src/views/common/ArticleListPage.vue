@@ -121,7 +121,7 @@ export default {
       if (currentPath.startsWith('/articles')) {
         this.$router.push({ path: `/articles/page/${val}` });
       }
-      // 如果是在首页或其他页面（比如 /tag/java），可能还是保持 ?page=x 比较安全，除非你也给它们配了路由
+      // 如果是在首页或其他页面（比如 /tag/java），可能还是保持 ?page=x 比较安全，除非也给它们配了路由
       else {
         this.$router.push({
           path: this.$route.path,
@@ -130,7 +130,7 @@ export default {
       }
 
       // 注意：这里不需要手动调 getArticles，因为 watch $route 会触发它
-      // 但如果你发现反应慢，可以解开下面这行注释，双重保险
+      // 但如果发现反应慢，可以解开下面这行注释，双重保险
        this.getArticles();
     },
 

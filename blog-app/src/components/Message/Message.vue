@@ -45,6 +45,11 @@ export default {
       timer: null     // 保存定时器 ID，用于销毁时清除
     }
   },
+  beforeDestroy() {
+    if (this.timer) {
+      clearTimeout(this.timer);
+    }
+  },
   computed: {
     // 根据 type 返回对应的 Element UI 图标类名
     iconClass() {
