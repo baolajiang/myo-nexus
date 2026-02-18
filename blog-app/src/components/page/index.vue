@@ -32,7 +32,7 @@ export default {
       bgCtx: null,
       bgParticles: [],
 
-      // --- 组2：流星参数 (新增功能) ---
+      // --- 组2：流星参数 ---
       shootingStars: [],      // 存放当前屏幕上的流星
       shootingStarTimer: 0,   // 计时器，控制流星出现的频率
 
@@ -128,7 +128,7 @@ export default {
       }
     },
 
-    // --- 逻辑部分：生成流星 (新增) ---
+    // --- 逻辑部分：生成流星  ---
     createShootingStar() {
       this.shootingStars.push({
         x: Math.random() * this.width + 200,      // 初始 X (屏幕右侧外)
@@ -172,7 +172,7 @@ export default {
           if (imgData[index] > 128) {
 
             // ============================================
-            // [注释]：在这里修改文字粒子的颜色
+            // 在这里修改文字粒子的颜色
             // ============================================
             let particleColor = 'rgba(255, 255, 255, 0.95)'; // 默认白色
 
@@ -201,7 +201,7 @@ export default {
               p.vy = old.vy;
               oldIndex++;
             } else {
-              // 新增的粒子直接出生在目标位
+              // 粒子直接出生在目标位
               p.x = p.originX;
               p.y = p.originY;
               p.vx = 0;
@@ -239,7 +239,7 @@ export default {
       }
 
       // =========================================
-      // 步骤 2：绘制流星 (新增逻辑)
+      // 步骤 2：绘制流星
       // =========================================
       this.shootingStarTimer++;
       // [注释] 下面 150 这个数字控制流星频率：数字越小流星越多，数字越大越少

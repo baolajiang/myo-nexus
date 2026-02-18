@@ -42,7 +42,7 @@ public class CategoryController {
     ///category/detail/{id}
     @GetMapping("detail/{id}")
     public Result categoryDetailById(@PathVariable("id") String id) {
-        // 修改判空逻辑
+        // 判空逻辑
         if (StringUtils.isBlank(id)) {
             throw new ParamException("分类ID不能为空");
         }

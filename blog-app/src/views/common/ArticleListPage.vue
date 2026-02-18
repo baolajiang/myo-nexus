@@ -73,7 +73,7 @@ export default {
       },
       deep: true
     },
-    // 2. 修改 watch $route：监听路由变化（点击浏览器前进后退时触发）
+    // 2. 监听路由变化（点击浏览器前进后退时触发）
     $route(to, from) {
       if (to.params.page) {
         this.innerPage.pageNumber = parseInt(to.params.page);

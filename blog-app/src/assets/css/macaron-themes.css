@@ -42,7 +42,7 @@
   border-style: solid; border-color: var(--accent-color);
   box-shadow: 0 15px 30px rgba(0,0,0,0.1), 0 5px 15px var(--shadow-color); z-index: 10;
 
-  /* 修改点：延长等待时间到 0.6s，等图钉掉完再动 */
+  /* 延长等待时间到 0.6s，等图钉掉完再动 */
   transition-delay: 0.6s;
 }
 
@@ -77,7 +77,7 @@
   transform: translateY(250px) rotate(120deg);
   opacity: 0;
 
-  /* 修改点：掉落时间延长到 0.6s，更加自然 */
+  /* 掉落时间延长到 0.6s，更加自然 */
   transition: transform 0.6s ease-in, opacity 0.5s ease-in;
 }
 

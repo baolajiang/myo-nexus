@@ -30,8 +30,7 @@ import request from './request' // 引封装好的 service
 import router from './router'
 import store from './store'
 
-// [关键修改] 请注释掉这一行！它会强制开启 passive，导致上面的修复失效
-// import 'default-passive-events'
+
 
 // 引入写的 Message
 import myMessage from './utils/Message.js'

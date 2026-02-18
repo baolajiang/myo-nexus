@@ -52,36 +52,71 @@
     </div>
 
     <el-dialog
-      title="裁剪頭像"
+      title="更换头像"
       :visible.sync="cropperVisible"
-      width="600px"  append-to-body
+      width="800px"
+      append-to-body
       :close-on-click-modal="false"
-      custom-class="cropper-dialog"
+      custom-class="bili-cropper-dialog"
     >
-      <div class="cropper-content">
-        <div class="cropper-box">
-          <vueCropper
-            ref="cropper"
-            :img="cropperImg"
-            :outputSize="option.size"
-            :outputType="option.outputType"
-            :info="true"
-            :full="option.full"
-            :canMove="option.canMove"
-            :canMoveBox="option.canMoveBox"
-            :original="option.original"
-            :autoCrop="option.autoCrop"
-            :autoCropWidth="option.autoCropWidth"
-            :autoCropHeight="option.autoCropHeight"
-            :fixedBox="option.fixedBox"
-            :centerBox="option.centerBox"
-            :high="option.high"
-          ></vueCropper>
+      <div class="bili-cropper-layout">
+        <div class="cropper-left">
+          <div class="cropper-box-wrap">
+            <vueCropper
+              ref="cropper"
+              :img="cropperImg"
+              :outputSize="option.size"
+              :outputType="option.outputType"
+              :info="true"
+              :full="option.full"
+              :canMove="option.canMove"
+              :canMoveBox="option.canMoveBox"
+              :original="option.original"
+              :autoCrop="option.autoCrop"
+              :autoCropWidth="option.autoCropWidth"
+              :autoCropHeight="option.autoCropHeight"
+              :fixedBox="option.fixedBox"
+              :centerBox="option.centerBox"
+              :high="option.high"
+              @realTime="realTime"
+            ></vueCropper>
+          </div>
+          <div class="cropper-tips">
+            <i class="el-icon-info"></i> 支持 JPG, PNG 等格式，图片需小于 2M，拖拽或缩放以调整位置
+          </div>
+        </div>
+
+        <div class="cropper-right">
+          <div class="preview-title">头像预览</div>
+          <div class="preview-desc">您的头像将自动生成为不同尺寸</div>
+
+          <div class="preview-item">
+            <div class="preview-circle-box big">
+              <div :style="getPreviewScaleStyle(100)">
+                <div :style="previews.div">
+                  <img :src="previews.url" :style="previews.img">
+                </div>
+              </div>
+            </div>
+            <div class="size-text">100px</div>
+          </div>
+
+          <div class="preview-item">
+            <div class="preview-circle-box small">
+              <div :style="getPreviewScaleStyle(50)">
+                <div :style="previews.div">
+                  <img :src="previews.url" :style="previews.img">
+                </div>
+              </div>
+            </div>
+            <div class="size-text">50px</div>
+          </div>
         </div>
       </div>
+
       <span slot="footer" class="dialog-footer">
-        <el-button @click="cropperVisible = false" size="small">取 消</el-button>
-        <el-button type="primary" @click="finishCrop" :loading="cropLoading" size="small">确认裁剪</el-button>
+        <el-button @click="cropperVisible = false" size="medium" plain>取 消</el-button>
+        <el-button type="primary" @click="finishCrop" :loading="cropLoading" size="medium">确认上传</el-button>
       </span>
     </el-dialog>
 
@@ -223,7 +258,9 @@ export default {
         autoCropHeight: 200,
         centerBox: true,
         high: true
-      }
+      },
+      previews: {}, //用于存储实时预览数据
+
     }
   },
   computed: {
@@ -290,8 +327,8 @@ export default {
     handleFileChange(e) {
       const file = e.target.files[0];
       if (!file) return;
-      // 限制大小 (GIF通常比较大，建议这里可以单独放宽一点，或者保持一致)
-      if (file.size > 5 * 1024 * 1024) { this.$message.warning('图片大小不能超过 5MB'); return; }
+      // 限制大小
+      if (file.size > 2 * 1024 * 1024) { this.$message.warning('图片大小不能超过 5MB'); return; }
       // ============================================================
       // GIF 特殊处理逻辑
       // 如果是 GIF，直接使用原图，跳过裁剪（为了保留动图效果）
@@ -444,6 +481,24 @@ export default {
         this.previewVisible = true;
       }
     },
+  // vue-cropper 的实时预览回调
+    realTime(data) {
+      this.previews = data;
+    },
+    // 计算预览区的缩放样式
+    // 因为 vue-cropper 返回的 div 大小是基于截图框的，我们需要把它缩放到 100px 或 50px
+    getPreviewScaleStyle(targetSize) {
+      if (!this.previews.w) return {};
+      const scale = targetSize / this.previews.w;
+      return {
+        width: this.previews.w + "px",
+        height: this.previews.h + "px",
+        transform: `scale(${scale})`, // 关键：通过 scale 缩放
+        transformOrigin: "top left",
+        position: "relative"
+      };
+    },
+
   }
 }
 </script>
@@ -744,10 +799,92 @@ a { text-decoration: none; }
   .nav-item.active .nav-text-cn { color: #d4af37 !important; font-weight: 700; }
   .nav-item { height: 60px; justify-content: center; }
 }
+/* 布局容器 */
+.bili-cropper-layout {
+  display: flex;
+  height: 360px; /* 固定高度 */
+  gap: 30px;
+}
+
+/* 左侧裁剪区 */
+.cropper-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.cropper-box-wrap {
+  flex: 1;
+  background: #f0f0f0;
+  border: 1px solid #e7e7e7;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.cropper-tips {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #999;
+}
+
+/* 右侧预览区 */
+.cropper-right {
+  width: 200px;
+  background: #f9f9f9;
+  border-radius: 4px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid #eee;
+}
+
+.preview-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 8px;
+}
+.preview-desc {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 20px;
+}
+
+.preview-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* 圆形预览容器 */
+.preview-circle-box {
+  border-radius: 50%; /* 强制圆形 */
+  overflow: hidden;   /* 裁剪超出部分 */
+  border: 2px solid #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  background: #fff; /* 避免透明背景 */
+}
+
+/* 固定预览容器大小 */
+.preview-circle-box.big {
+  width: 100px;
+  height: 100px;
+}
+.preview-circle-box.small {
+  width: 50px;
+  height: 50px;
+}
+
+.size-text {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #666;
+}
 </style>
 
 /* ================= 全局样式 (必须放在不带 scoped 的 style 标签中) ================= */
 <style>
+
 /* 1. 个人中心弹窗样式重置 */
 .luna-profile-dialog {
   background: transparent !important;
@@ -757,9 +894,9 @@ a { text-decoration: none; }
 .luna-profile-dialog .el-dialog__header { display: none; }
 .luna-profile-dialog .el-dialog__body { padding: 0 !important; }
 
-/* 2. 裁剪弹窗样式 (PC默认) */
-.cropper-dialog {
-  /* PC 端保持默认宽度，样式由 Element 属性控制 */
+/* 确保弹窗 body 没有任何内边距，方便布局 */
+.bili-cropper-dialog .el-dialog__body {
+  padding: 20px 30px !important;
 }
 /* [修复] 裁剪区域容器 */
 .cropper-content {

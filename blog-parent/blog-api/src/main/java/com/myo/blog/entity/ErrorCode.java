@@ -13,7 +13,7 @@ public enum  ErrorCode {
     ACCOUNT_DISABLED(90003, "账号已被封禁"),
 
 
-    // 新增错误码
+    // 错误码
     SYSTEM_ERROR(500, "系统异常"),
     DATA_NOT_FOUND(10005, "数据不存在"),
     OPERATION_FAILED(10006, "操作失败"),

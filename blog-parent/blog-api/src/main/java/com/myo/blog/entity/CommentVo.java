@@ -21,7 +21,7 @@ public class CommentVo  {
     private Integer level;
 
     private UserVo toUser;
-    // === 新增字段 ===
+
     private String parentId;
     // 如果完全依赖 @Data，则不需要手写
     public String getParentId() {

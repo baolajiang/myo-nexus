@@ -48,7 +48,7 @@ public class ArticleServiceImpl implements ArticleService {
     private ArticleTagMapper articleTagMapper;
     @Autowired
     private RabbitTemplate rabbitTemplate; // 注入 RabbitTemplate
-    // 【新增注入】直接注入 Mapper 以便進行批量查詢 (Batch Query)
+    // 直接注入 Mapper 以便進行批量查詢 (Batch Query)
     // 這是為了在 copyList 方法中解決 N+1 問題，直接用 ID 列表查出資料
     @Autowired
     private SysUserMapper sysUserMapper;

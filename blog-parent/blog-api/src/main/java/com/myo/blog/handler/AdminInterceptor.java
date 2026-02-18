@@ -34,7 +34,7 @@ public class AdminInterceptor implements HandlerInterceptor {
             return sendError(response, ErrorCode.NO_LOGIN.getCode(), "未登录");
         }
 
-        // 3. 【核心修改】废弃 getAdmin()，改为查权限
+
         // 去数据库查这个用户拥有的所有权限
         List<String> permissions = sysUserMapper.findPermissionsByUserId(sysUser.getId());
 

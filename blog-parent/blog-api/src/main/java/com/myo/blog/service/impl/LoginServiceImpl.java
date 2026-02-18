@@ -50,7 +50,7 @@ public class LoginServiceImpl implements LoginService {
     @Autowired
     private MailService mailService;
 
-    // === 新增注入 UserTokenMapper ===
+    // === 注入 UserTokenMapper ===
     @Autowired
     private UserTokenMapper userTokenMapper;
 
@@ -101,7 +101,7 @@ public class LoginServiceImpl implements LoginService {
         //更新最后登录IP,并设置登录时间
         updateLoginInfo(sysUser.getId());
 
-        // === 修改：同时保存到 Redis 和 MySQL ===
+        // === 同时保存到 Redis 和 MySQL ===
         saveToken(token, sysUser);
 
         log.debug("登录信息更新完成 - 用户ID: {}, Token生成成功", sysUser.getId());
@@ -191,7 +191,7 @@ public class LoginServiceImpl implements LoginService {
         return Result.success(null);
     }
 
-    // ================== 【核心修改区域：发送验证码】 ==================
+    // ================== 【发送验证码】 ==================
     /**
      * 发送验证码接口（优化版）
      */
@@ -220,7 +220,7 @@ public class LoginServiceImpl implements LoginService {
     }
 
 
-    // ================== 【核心修改区域：注册逻辑】 ==================
+    // ================== 【注册逻辑】 ==================
     @Override
     public Result register(LoginParam loginParam) {
         String account = loginParam.getAccount();
@@ -291,7 +291,7 @@ public class LoginServiceImpl implements LoginService {
         // 6. 自动登录
         String token = JWTUtils.createToken(sysUser.getId());
 
-        // === 修改：同时保存到 Redis 和 MySQL ===
+        // === 同时保存到 Redis 和 MySQL ===
         saveToken(token, sysUser);
 
         log.info("用户自动登录完成 - 用户ID: {}, Token生成成功", sysUser.getId());

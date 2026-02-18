@@ -13,5 +13,5 @@ public class LoginParam {
 
     private String email;
 
-    private String code; // 新增验证码字段
+    private String code; // 验证码字段
 }

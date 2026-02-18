@@ -148,7 +148,7 @@ export default {
   data() {
     return {
       publishVisible: false,
-      coverLoading: false, //  新增：控制封面局部的 loading 狀態
+      coverLoading: false, //  控制封面局部的 loading 狀態
       categorys: [],
       tags: [],
       articleForm: {
