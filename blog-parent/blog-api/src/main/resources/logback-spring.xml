@@ -1,18 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+
+    <!-- 日志文件存放根目录 -->
     <property name="LOG_HOME" value="logs" />
+    <!-- 日志输出格式：时间 | 线程名 | 链路追踪ID | 日志级别 | 类名（最长50字符） | 消息内容 -->
     <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{TRACE_ID}] %-5level %logger{50} - %msg%n" />
 
-    <!-- 控制台输出 -->
+    <!-- ==================== Appender 定义 ==================== -->
+
+    <!-- 控制台输出appender -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>${LOG_PATTERN}</pattern>
         </encoder>
     </appender>
 
-    <!-- 信息日志文件 -->
+    <!-- INFO 文件 appender：按天滚动，只记录 INFO 级别日志 -->
     <appender name="FILE_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_HOME}/info.log</file>
+        <!-- 按天切割，最多保留 30 天历史 -->
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${LOG_HOME}/info.%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>30</maxHistory>
@@ -20,6 +26,7 @@
         <encoder>
             <pattern>${LOG_PATTERN}</pattern>
         </encoder>
+        <!-- 精确匹配 INFO 级别，其余级别一律拒绝，实现级别隔离 -->
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
             <level>INFO</level>
             <onMatch>ACCEPT</onMatch>
@@ -27,7 +34,7 @@
         </filter>
     </appender>
 
-    <!-- 错误日志文件 -->
+    <!-- ERROR 文件 appender：按天滚动，记录 WARN 及以上级别日志 -->
     <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_HOME}/error.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -37,33 +44,92 @@
         <encoder>
             <pattern>${LOG_PATTERN}</pattern>
         </encoder>
+        <!-- 阈值过滤器：放行 WARN、ERROR，低于 WARN 的日志不记录 -->
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>WARN</level>
         </filter>
     </appender>
 
-    <!-- 异步处理 -->
+    <!-- AI 操作行为文件 appender：按天滚动，专门记录 AI 模块的操作日志 -->
+    <appender name="FILE_AI_ACTION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/ai-admin-action.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/ai-admin-action.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ==================== 异步 Appender 包装 ==================== -->
+    <!--
+        用 AsyncAppender 包装同步文件 appender，日志先进内存队列再异步落盘，
+        避免磁盘 I/O 阻塞业务线程。
+        discardingThreshold=0：队列满时不丢弃任何日志（默认会丢弃低级别日志）
+        queueSize=512：内存队列容量
+    -->
+
+    <!-- 异步写 INFO 日志 -->
     <appender name="ASYNC_FILE_INFO" class="ch.qos.logback.classic.AsyncAppender">
         <discardingThreshold>0</discardingThreshold>
         <queueSize>512</queueSize>
         <appender-ref ref="FILE_INFO" />
     </appender>
 
+    <!-- 异步写 ERROR/WARN 日志 -->
     <appender name="ASYNC_FILE_ERROR" class="ch.qos.logback.classic.AsyncAppender">
         <discardingThreshold>0</discardingThreshold>
         <queueSize>512</queueSize>
         <appender-ref ref="FILE_ERROR" />
     </appender>
 
-    <!-- 包级别日志控制 -->
+    <!-- 异步写 AI 操作日志 -->
+    <appender name="ASYNC_FILE_AI" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>512</queueSize>
+        <appender-ref ref="FILE_AI_ACTION" />
+    </appender>
+
+    <!-- ==================== Logger 配置 ==================== -->
+
+    <!-- IP 黑名单拦截器日志，保持 INFO 级别输出 -->
     <logger name="com.myo.blog.handler.IpBlackListInterceptor" level="INFO"/>
+    <!-- AOP 操作日志切面，保持 INFO 级别输出 -->
     <logger name="com.myo.blog.common.aop.LogAspect" level="INFO"/>
+    <!-- 降低第三方框架日志级别，屏蔽 Spring / Apache 的 INFO 噪音 -->
     <logger name="org.springframework" level="WARN"/>
     <logger name="org.apache" level="WARN"/>
 
+    <!--
+        AI 相关模块 Logger 配置（共3个）
+        additivity="false"：禁止日志向上传递给 root logger，
+        防止同一条日志同时被 root 的 appender 再次写入，避免重复记录。
+        输出目标：AI 操作日志文件 + 控制台（便于开发调试时实时查看）
+    -->
+    <logger name="com.myo.blog.controller.AdminAiController" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_FILE_AI" />
+        <appender-ref ref="CONSOLE" />
+    </logger>
+
+    <logger name="com.myo.blog.config.UserAiTools" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_FILE_AI" />
+        <appender-ref ref="CONSOLE" />
+    </logger>
+
+    <logger name="com.myo.blog.config.ArticleAiTools" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_FILE_AI" />
+        <appender-ref ref="CONSOLE" />
+    </logger>
+
+    <!--
+        根 Logger（兜底）：所有未被上面 logger 捕获的日志都走这里
+        输出到控制台 + 异步 INFO 文件 + 异步 ERROR 文件
+    -->
     <root level="INFO">
         <appender-ref ref="CONSOLE" />
         <appender-ref ref="ASYNC_FILE_INFO" />
         <appender-ref ref="ASYNC_FILE_ERROR" />
     </root>
+
 </configuration>

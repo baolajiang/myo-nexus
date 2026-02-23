@@ -72,6 +72,11 @@
         <span>系統管理</span>
       </template>
 
+      <el-menu-item index="/ai/chat">
+        <el-icon><ChatDotRound /></el-icon>
+        <template #title>AI 指挥官</template>
+      </el-menu-item>
+
       <el-menu-item index="/system/media">
         <el-icon><Picture /></el-icon>
         <span>附件管理</span>

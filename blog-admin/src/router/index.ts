@@ -65,6 +65,12 @@ const routes: Array<RouteRecordRaw> = [
                 component: () => import('../views/system/log.vue'),
                 meta: { title: '操作日志' }
             },
+            // === 智能助手 ===
+            {
+                path: 'ai/chat',
+                component: () => import('../views/ai/chat.vue'),
+                meta: { title: '智能助手' }
+            },
         ]
     }
 ]

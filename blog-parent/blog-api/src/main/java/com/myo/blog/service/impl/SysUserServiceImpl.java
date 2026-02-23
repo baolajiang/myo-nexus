@@ -97,7 +97,7 @@ public class SysUserServiceImpl implements SysUserService {
         queryWrapper.last("limit 1");
         return sysUserMapper.selectOne(queryWrapper);
     }
-
+    // 根据token查询用户信息
     @Override
     public Result findUserByToken(String token) {
         SysUser sysUser = loginService.checkToken(token);
@@ -235,7 +235,11 @@ public class SysUserServiceImpl implements SysUserService {
     public List<SysUser> findUserByIds(Collection<String> ids) { // Collection<Long> -> Collection<String>
         return sysUserMapper.selectBatchIds(ids);
     }
-
+    /**
+     * 查询用户列表
+     * @param pageParams 分页参数
+     * @return 分页后的用户列表
+     */
     @Override
     public Result UserList(PageParams pageParams) {
         Page<SysUser> page = new Page<>(pageParams.getPage(), pageParams.getPageSize());

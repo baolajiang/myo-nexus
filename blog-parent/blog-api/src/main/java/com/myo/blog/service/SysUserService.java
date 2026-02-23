@@ -18,9 +18,9 @@ import java.util.List;
  */
 public interface SysUserService {
 
-    UserVo findUserVoById(String id); // Long -> String
+    UserVo findUserVoById(String id);
 
-    SysUser findUserById(String id); // Long -> String
+    SysUser findUserById(String id);
 
     SysUser findUser(String account, String password);
 

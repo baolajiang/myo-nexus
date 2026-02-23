@@ -34,7 +34,7 @@ public class SysUser {
 
     private String salt;
 
-    private Integer status;
+    private Integer status;// 0：正常，1：警告，99：被禁用
 
     private String ipaddr;
 
