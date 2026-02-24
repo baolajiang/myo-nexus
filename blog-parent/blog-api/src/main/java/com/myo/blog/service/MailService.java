@@ -1,5 +1,6 @@
 package com.myo.blog.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
  * 邮件服务组件
  * 专门用于处理耗时的邮件发送任务
  */
+@Slf4j
 @Service
 public class MailService {
 
@@ -42,13 +44,11 @@ public class MailService {
 
             // 3. 发送邮件 (这一步最耗时，但现在它在后台运行了)
             mailSender.send(message);
-
-            System.out.println(">>> 邮件已异步发送给：" + to);
+            log.info(">>> 邮件已异步发送给：{}", to);
 
         } catch (Exception e) {
             // 异步方法中的异常通常只能打印日志，无法抛给 Controller
-            e.printStackTrace();
-            System.err.println(">>> 邮件发送失败：" + e.getMessage());
+            log.error(">>> 邮件发送失败：{}", e.getMessage());
         }
     }
 }

@@ -5,11 +5,14 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
 import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
+import com.myo.blog.config.saver.RedisCheckpointSaver;
 import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.RedisTemplate;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,10 +48,11 @@ public class AiAgentConfig {
      *
      * @param userAiTools    用户模块工具集（Spring 自动注入）
      * @param articleAiTools 文章模块工具集（Spring 自动注入）
+     * @param redisTemplate Redis 模板（Spring 自动注入），用于会话记忆持久化
      * @return 配置完毕的 ReactAgent 单例
      */
     @Bean
-    public ReactAgent blogAdminAgent(UserAiTools userAiTools, ArticleAiTools articleAiTools) {
+    public ReactAgent blogAdminAgent(UserAiTools userAiTools, ArticleAiTools articleAiTools,RedisTemplate<String, String> redisTemplate) {
 
         // 1. 初始化 DashScope API 客户端
         DashScopeApi dashScopeApi = DashScopeApi.builder()
@@ -85,8 +89,8 @@ public class AiAgentConfig {
                         "6. 最小权限原则：每次只执行用户明确要求的操作，不得举一反三地执行用户未明确要求的关联操作。"
                 )
                 .tools(allTools.toArray(new ToolCallback[0]))
-                // MemorySaver：对话历史存于内存，不同管理员通过 threadId 隔离各自的对话上下文
-                .saver(new MemorySaver())
+                // 会话记忆：使用 RedisCheckpointSaver 将对话历史保存在 Redis 中，支持多节点部署，会话上下文持久化
+                .saver(new RedisCheckpointSaver(redisTemplate))
                 .build();
     }
 }
