@@ -95,7 +95,11 @@ public interface SysUserService {
      */
      Result updateUserStatus(UserParam userParam);
 
+    // 判断用户是否拥有某个特定权限
+    boolean hasPermission(String userId, String permissionCode);
 
+    // 获取用户所有的权限名称列表
+    List<String> getUserPermissionNames(String userId);
 
 
 }

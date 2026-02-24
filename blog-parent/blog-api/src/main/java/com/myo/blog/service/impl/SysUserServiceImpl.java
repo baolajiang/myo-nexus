@@ -331,4 +331,17 @@ public class SysUserServiceImpl implements SysUserService {
 
         System.out.println("用户 " + userId + " 被强制踢下线，删除所有相关缓存");
     }
+    // 判断用户是否拥有某个特定权限
+    @Override
+    public boolean hasPermission(String userId, String permissionCode) {
+        if (userId == null || permissionCode == null) return false;
+        List<String> codes = sysUserMapper.findPermissionCodesByUserId(userId);
+        return codes != null && codes.contains(permissionCode);
+    }
+    // 获取用户所有的权限名称列表
+    @Override
+    public List<String> getUserPermissionNames(String userId) {
+        if (userId == null) return null;
+        return sysUserMapper.findPermissionNamesByUserId(userId);
+    }
 }

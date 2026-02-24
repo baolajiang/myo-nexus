@@ -5,15 +5,23 @@ import com.alibaba.cloud.ai.graph.agent.ReactAgent;
 import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
 import com.alibaba.cloud.ai.graph.exception.GraphRunnerException;
 import com.myo.blog.dao.pojo.SysUser;
+import com.myo.blog.entity.Result;
+import com.myo.blog.service.SysUserService;
+import com.myo.blog.service.impl.SysUserServiceImpl;
 import com.myo.blog.utils.UserThreadLocal;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.web.bind.annotation.GetMapping;
+import com.alibaba.fastjson2.JSON;
+import com.myo.blog.entity.Result;
+import java.util.List;
+import java.util.Map;
+import java.util.ArrayList;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -49,22 +57,26 @@ public class AdminAiController {
      */
     private final ReactAgent blogAdminAgent;
 
-    public AdminAiController(ReactAgent blogAdminAgent) {
+    private final StringRedisTemplate stringRedisTemplate;
+
+    private final SysUserService sysUserService;
+
+
+    public AdminAiController(ReactAgent blogAdminAgent, StringRedisTemplate stringRedisTemplate, SysUserService sysUserService) {
         this.blogAdminAgent = blogAdminAgent;
+        this.stringRedisTemplate = stringRedisTemplate;
+        this.sysUserService = sysUserService;
     }
 
     /**
      * 接收前端 AI 控制台发送的自然语言指令并执行
-
      * 请求处理流程：
-
      *  从 UserThreadLocal 获取当前管理员（由 LoginInterceptor 预先注入）
      *  日志记录原始指令（带管理员 ID，便于审计溯源）
      *  空指令校验
      *  高危关键词拦截（Java 层防御）
      *  以管理员 ID 为 threadId 调用 ReactAgent，保证每个管理员拥有独立的对话上下文
      *  返回 AI 回复并记录日志
-
      * 会话隔离说明：threadId 格式为 {@code admin-session-{userId}}，
      * 每个管理员拥有独立的对话历史，互不干扰。
      * userId 直接来自经过认证的 UserThreadLocal，安全可靠，无需解析 token。
@@ -99,19 +111,55 @@ public class AdminAiController {
                 return "系统安全警告：检测到违规或越权操作指令，请求已被拒绝执行。";
             }
         }
-
+        // 动态获取该用户真实拥有的权限中文名
+        List<String> permNames = sysUserService.getUserPermissionNames(currentUser.getId());
+        String permsString = (permNames != null && !permNames.isEmpty()) ? String.join("、", permNames) : "无任何操作权限";
+        // 给 AI 下达极其明确的系统底线指令
+        String enhancedMessage = "[系统底层指令：当前操作者的权限列表为【" + permsString + "】。如果用户要求执行的功能不在上述权限列表中，请直接拒绝，绝对不要调用相关工具！] \n" +
+                "用户说：" + message;
         // 以当前管理员 ID 构建专属会话上下文，实现多管理员对话严格隔离
         RunnableConfig runnableConfig = RunnableConfig.builder()
                 .threadId(threadId)
                 .build();
 
         try {
-            AssistantMessage response = blogAdminAgent.call(message, runnableConfig);
+            AssistantMessage response = blogAdminAgent.call(enhancedMessage, runnableConfig);
             log.info("管理员 [{}] AI回复: [{}]", currentUser.getId(), response.getText());
             return response.getText();
         } catch (GraphRunnerException e) {
             log.error("AI智能体执行异常, 管理员: [{}], 指令: [{}]", currentUser.getId(), message, e);
             return "AI服务暂时不可用，请稍后重试";
         }
+    }
+
+    @GetMapping("/history")
+    public Result getHistory() {
+        SysUser currentUser = UserThreadLocal.get();
+        // 专门为前端界面准备的一个 Redis Key
+        String key = "ai:frontend:history:" + currentUser.getId();
+        String historyJson = stringRedisTemplate.opsForValue().get(key);
+        if (historyJson != null) {
+            return Result.success(JSON.parseArray(historyJson));
+        }
+        return Result.success(new ArrayList<>());
+    }
+
+    @PostMapping("/history")
+    public Result saveHistory(@RequestBody List<Map<String, Object>> messages) {
+        SysUser currentUser = UserThreadLocal.get();
+        String key = "ai:frontend:history:" + currentUser.getId();
+        // 前端每发一次消息，把完整的聊天数组转成 JSON 存入 Redis
+        stringRedisTemplate.opsForValue().set(key, JSON.toJSONString(messages));
+        return Result.success(null);
+    }
+
+    @GetMapping("/clear")
+    public Result clearHistory() {
+        SysUser currentUser = UserThreadLocal.get();
+        // 1. 删除前端界面的展示记录
+        stringRedisTemplate.delete("ai:frontend:history:" + currentUser.getId());
+        // 2. 彻底删除 AI 的底层深度记忆，这步是保证 AI 真正失忆的关键
+        stringRedisTemplate.delete("ai:agent:checkpoints:admin-session-" + currentUser.getId());
+        return Result.success(null);
     }
 }

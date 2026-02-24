@@ -5,6 +5,7 @@ import com.myo.blog.dao.pojo.SysUser;
 import com.myo.blog.entity.Result;
 import com.myo.blog.entity.params.PageParams;
 import com.myo.blog.service.SysUserService;
+import com.myo.blog.utils.UserThreadLocal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
@@ -97,10 +98,15 @@ public class UserAiTools {
     // 第 3 个方法：封禁单人
     @Tool(description = "根据账号(account)对目标用户执行封禁操作")
     public String disableUser(String account) {
+        // 绝对防御：只认权限不认人！
+        SysUser currentUser = UserThreadLocal.get();
+        if (currentUser == null || !sysUserService.hasPermission(currentUser.getId(), "user:status")) {
+            return "操作失败：系统拒绝执行。原因：当前操作者没有 [修改用户状态] 的权限，请委婉地告知用户。";
+        }
         log.info("根据账号封禁用户，账号：{}", account);
-        System.out.println("执行封禁：" + account);
         SysUser targetUser = sysUserService.findUserByAccount(account);
         if (targetUser == null) return "封禁失败：未找到该账号";
+
 
         targetUser.setStatus(99); //
         boolean success = sysUserService.updateById(targetUser);
@@ -109,8 +115,11 @@ public class UserAiTools {
     // 第 4 个方法：解封单人
     @Tool(description = "根据账号(account)对目标用户执行解封操作")
     public String enableUser(String account) {
+        SysUser currentUser = UserThreadLocal.get();
+        if (currentUser == null || !sysUserService.hasPermission(currentUser.getId(), "user:status")) {
+            return "操作失败：系统拒绝执行。原因：当前操作者没有 [修改用户状态] 的权限，请委婉地告知用户。";
+        }
         log.info("根据账号解封用户，账号：{}", account);
-        System.out.println("执行解封：" + account);
         SysUser targetUser = sysUserService.findUserByAccount(account);
         if (targetUser == null) return "解封失败：未找到该账号";
         // 解封操作，将状态设置为 0（正常）
@@ -121,8 +130,11 @@ public class UserAiTools {
     // 第 5个方法：警告单人
     @Tool(description = "根据账号(account)对目标用户执行警告操作")
     public String warnUser(String account) {
+        SysUser currentUser = UserThreadLocal.get();
+        if (currentUser == null || !sysUserService.hasPermission(currentUser.getId(), "user:status")) {
+            return "操作失败：系统拒绝执行。原因：当前操作者没有 [修改用户状态] 的权限，请委婉地告知用户。";
+        }
         log.info("根据账号警告用户，账号：{}", account);
-        System.out.println("执行警告：" + account);
         SysUser targetUser = sysUserService.findUserByAccount(account);
         if (targetUser == null) return "警告失败：未找到该账号";
         // 警告操作，将状态设置为 1（警告）
