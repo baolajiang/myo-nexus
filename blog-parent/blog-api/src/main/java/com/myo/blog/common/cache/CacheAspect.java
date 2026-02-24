@@ -32,7 +32,7 @@ import java.time.Duration;
 @Aspect    // 声明这是一个 AOP 切面类
 @Component // 注册为 Spring Bean，让 Spring 能管理它
 @Slf4j     // 注入 log 对象，方便打印日志
-@RequiredArgsConstructor
+@RequiredArgsConstructor// 自动注入 RedisTemplate，无需手动配置
 public class CacheAspect {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
