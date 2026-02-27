@@ -4,11 +4,11 @@ import com.alibaba.cloud.ai.dashscope.api.DashScopeApi;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
-import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
+
 import com.myo.blog.config.saver.RedisCheckpointSaver;
 import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
-import org.springframework.beans.factory.annotation.Qualifier;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,11 +38,10 @@ public class AiAgentConfig {
 
     /**
      * 构建并注册博客后台 AI 管理智能体
-
      * 工具注册：扫描 UserAiTools 和 ArticleAiTools 中所有带 @Tool 注解的方法，
      * 统一注册给 Agent，Agent 会根据用户指令自动决策调用哪个工具。
 
-     * 会话记忆：使用 MemorySaver 将对话历史保存在 JVM 内存中，
+     * 会话记忆：使用 RedisCheckpointSaver 将对话历史保存在 Redis 中，
      * 支持多轮对话上下文。适合当前博客项目规模（管理员人数少、会话量小）。
      * 若后续升级为多节点部署或需要持久化会话，可替换为基于 Redis 的 Saver 实现。
      *
