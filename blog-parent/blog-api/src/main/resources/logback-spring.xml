@@ -112,16 +112,20 @@
         <appender-ref ref="CONSOLE" />
     </logger>
 
-    <logger name="com.myo.blog.config.UserAiTools" level="INFO" additivity="false">
+    <logger name="com.myo.blog.ai.tools.UserAiTools" level="INFO" additivity="false">
         <appender-ref ref="ASYNC_FILE_AI" />
         <appender-ref ref="CONSOLE" />
     </logger>
 
-    <logger name="com.myo.blog.config.ArticleAiTools" level="INFO" additivity="false">
+    <logger name="com.myo.blog.ai.tools.ArticleAiTools" level="INFO" additivity="false">
         <appender-ref ref="ASYNC_FILE_AI" />
         <appender-ref ref="CONSOLE" />
     </logger>
 
+    <logger name="com.myo.blog.ai.tools.DatabaseAiTools" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_FILE_AI" />
+        <appender-ref ref="CONSOLE" />
+    </logger>
     <!--
         根 Logger（兜底）：所有未被上面 logger 捕获的日志都走这里
         输出到控制台 + 异步 INFO 文件 + 异步 ERROR 文件

@@ -344,4 +344,10 @@ public class SysUserServiceImpl implements SysUserService {
         if (userId == null) return null;
         return sysUserMapper.findPermissionNamesByUserId(userId);
     }
+
+    @Override
+    public List<String> getUserRoleNames(String userId) {
+        if (userId == null) return null;
+        return sysUserMapper.findRoleNamesByUserId(userId);
+    }
 }

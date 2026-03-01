@@ -101,5 +101,6 @@ public interface SysUserService {
     // 获取用户所有的权限名称列表
     List<String> getUserPermissionNames(String userId);
 
-
+    // 获取用户所有的角色名称列表
+    List<String> getUserRoleNames(String userId);
 }

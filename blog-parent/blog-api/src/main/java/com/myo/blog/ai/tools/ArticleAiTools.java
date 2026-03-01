@@ -1,10 +1,14 @@
-package com.myo.blog.config;
+package com.myo.blog.ai.tools;
 
 import com.myo.blog.entity.Result;
 import com.myo.blog.service.ArticleService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.stereotype.Component;
+/**
+ * 文章相关的 AI 工具类
+
+ */
 @Slf4j
 @Component
 public class ArticleAiTools {

@@ -1,4 +1,4 @@
-package com.myo.blog.config.saver;
+package com.myo.blog.ai.saver;
 
 import com.alibaba.cloud.ai.graph.RunnableConfig;
 import com.alibaba.cloud.ai.graph.checkpoint.BaseCheckpointSaver;
@@ -15,7 +15,7 @@ import java.util.stream.IntStream;
 
 /**
  * 基于 Redis 的 AI 对话检查点持久化实现
- * 
+
  * 实现了框架的 {@link BaseCheckpointSaver} 接口，将 AI Agent 每一轮对话产生的
  * 检查点（Checkpoint）序列化后存入 Redis，替代默认的 JVM 内存存储（MemorySaver）。
 

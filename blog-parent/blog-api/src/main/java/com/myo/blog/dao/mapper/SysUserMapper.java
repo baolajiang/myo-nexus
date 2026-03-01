@@ -41,4 +41,6 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
             "WHERE ur.user_id = #{userId}")
     List<String> findPermissionNamesByUserId(String userId);
 
+    // 获取用户所有的角色名称列表
+    List<String> findRoleNamesByUserId(String userId);
 }

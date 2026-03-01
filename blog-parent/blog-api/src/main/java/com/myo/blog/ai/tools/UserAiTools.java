@@ -1,4 +1,4 @@
-package com.myo.blog.config;
+package com.myo.blog.ai.tools;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.myo.blog.dao.pojo.SysUser;
@@ -10,8 +10,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+
 import java.util.List;
+/**
+ * 用户相关的 AI 工具类
+
+ */
 @Slf4j
 // 加上 @Component 让 Spring 管理它，这就相当于一个 AI 专属的 Controller
 @Component
@@ -100,6 +104,7 @@ public class UserAiTools {
     public String disableUser(String account) {
         // 绝对防御：只认权限不认人！
         SysUser currentUser = UserThreadLocal.get();
+
         if (currentUser == null || !sysUserService.hasPermission(currentUser.getId(), "user:status")) {
             return "操作失败：系统拒绝执行。原因：当前操作者没有 [修改用户状态] 的权限，请委婉地告知用户。";
         }

@@ -15,5 +15,12 @@
     <insert id="insertUserRole">
         INSERT INTO myo_sys_user_role (user_id, role_id) VALUES (#{userId}, #{roleId})
     </insert>
+    <!-- 获取用户所有的角色名称列表 -->
+    <select id="findRoleNamesByUserId" resultType="java.lang.String">
+        SELECT r.name
+        FROM myo_sys_role r
+                 LEFT JOIN myo_sys_user_role ur ON r.id = ur.role_id
+        WHERE ur.user_id = #{userId}
+    </select>
 
 </mapper>
