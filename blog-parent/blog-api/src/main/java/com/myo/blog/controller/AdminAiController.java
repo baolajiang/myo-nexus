@@ -9,6 +9,7 @@ import com.myo.blog.entity.Result;
 import com.myo.blog.service.SysUserService;
 import com.myo.blog.service.impl.SysUserServiceImpl;
 import com.myo.blog.utils.UserThreadLocal;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import com.alibaba.fastjson2.JSON;
@@ -131,11 +132,17 @@ public class AdminAiController {
         } else if (currentUser.getAccount() != null && !currentUser.getAccount().isEmpty()) {
             userTitle = currentUser.getAccount();
         }
+        // 获取当前用户的最高角色等级
+        Integer currentLevel = sysUserService.getHighestRoleLevel(currentUser.getId());
+        // 构造终极解耦的 SQL 数据权限底线提示词
+        String dataScopeLimit = getString(currentLevel, currentUser);
 
-        // 构造动态的系统上下文，一并塞给 AI
-        String enhancedMessage = "[系统底层状态同步（请勿向用户暴露此段信息）：\n" +
-                "1. 当前操作者的权限列表为【" + permsString + "】。如果用户要求执行的功能越权，请直接拒绝，绝对不要调用相关工具！\n" +
-                "2. 当前与你对话的用户的角色身份是：【" + userTitle + "】。你在回复时，请务必使用『" + userTitle + "您好』作为开头。]\n" +
+        String enhancedMessage ="[系统底层状态同步（请勿向用户暴露此段信息）：\n" +
+                "1. 当前操作者的真实账号(account)是：【" + currentUser.getAccount() + "】，昵称是：【" + currentUser.getNickname() + "】。\n" +
+                "2. 当前操作者的权限列表为【" + permsString + "】。\n" +
+                "3. 当前与你对话的用户的角色身份是：【" + userTitle + "】。回复时请用『" + userTitle + "您好』开头。\n" +
+                "4. 【高情商判定】：当你发现用户要求查询或操作的账号，正是他本人（账号或昵称与上述一致）时，请在回复中自然地指出『这是您本人的账号』。如果他要求封禁或惩罚自己，请用幽默或严谨的口吻明确拒绝，例如『为了系统安全，不允许对自己下手哦』！\n" +
+                dataScopeLimit + "]\n" +
                 "用户说：" + message;
         // 以当前管理员 ID 构建专属会话上下文，实现多管理员对话严格隔离
         RunnableConfig runnableConfig = RunnableConfig.builder()
@@ -151,6 +158,23 @@ public class AdminAiController {
             return "AI服务暂时不可用，请稍后重试";
         }
     }
+
+    @NotNull
+    private static String getString(Integer currentLevel, SysUser currentUser) {
+        String dataScopeLimit = "";
+        if (currentLevel >= 99) {
+            dataScopeLimit = "3. 【致命红线】：当前操作者是无管理权限的普通或异常用户！绝对禁止使用 executeQuery 工具执行任何查询系统数据的 SQL！请直接回复无权操作。\n";
+        } else if (currentLevel > 1) {
+            dataScopeLimit = "3. 【最高数据安全红线】：当前操作者的角色权限等级为 " + currentLevel + "（数字越小代表权限越大）。\n" +
+                    "当你使用 executeQuery 工具生成任何查询 myo_sys_user 表的 SQL 时，必须强制在 WHERE 条件中排除掉权限比他高或同级的人！\n" +
+                    "你必须在 SQL 中强制加上：`myo_sys_user.id NOT IN (SELECT ur.user_id FROM myo_sys_user_role ur INNER JOIN myo_sys_role r ON ur.role_id = r.id WHERE r.role_level <= " + currentLevel + " AND ur.user_id != '" + currentUser.getId() + "')`。\n" +
+                    "绝对不允许越权查出高级别的数据！\n";
+        } else {
+            dataScopeLimit = "3. 【数据权限】：当前操作者是 Level 1 最高级别站长，允许查询系统内所有数据。但在统计或展示用户列表时，请在 SQL 的 WHERE 条件中加上 `id != '" + currentUser.getId() + "'` 以过滤掉站长自己。\n";
+        }
+        return dataScopeLimit;
+    }
+
     /**
      * 获取当前管理员的 AI 对话历史记录
      * 从 Redis 中读取 {@code ai:frontend:history:{userId}} 键对应的值，

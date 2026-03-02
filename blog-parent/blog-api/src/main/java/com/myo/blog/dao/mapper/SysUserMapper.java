@@ -43,4 +43,7 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
 
     // 获取用户所有的角色名称列表
     List<String> findRoleNamesByUserId(String userId);
+
+    // 查询当前用户拥有的最小 level 值（官阶最大）
+    Integer getHighestRoleLevel(@Param("userId") String userId);
 }

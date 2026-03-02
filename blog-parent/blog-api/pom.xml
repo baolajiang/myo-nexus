@@ -97,6 +97,8 @@
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
         </dependency>
+        <!-- JSQLParser 用于解析 SQL 语句 -->
+
 
         <dependency>
             <groupId>org.mybatis</groupId>
@@ -107,9 +109,13 @@
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-boot-starter</artifactId>
-            <version>3.5.5</version>
+            <version>3.5.9</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+            <version>3.5.9</version>
+        </dependency>
         <!-- FastJSON -->
         <dependency>
             <groupId>com.alibaba</groupId>

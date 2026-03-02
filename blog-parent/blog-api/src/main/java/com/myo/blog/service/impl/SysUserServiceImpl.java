@@ -350,4 +350,13 @@ public class SysUserServiceImpl implements SysUserService {
         if (userId == null) return null;
         return sysUserMapper.findRoleNamesByUserId(userId);
     }
+    @Override
+    public Integer getHighestRoleLevel(String userId) {
+        if (userId == null) {
+            return 99;
+        }
+        Integer level = sysUserMapper.getHighestRoleLevel(userId);
+        // 防止数据库里没有配level或者查出来是null的情况
+        return level == null ? 99 : level;
+    }
 }

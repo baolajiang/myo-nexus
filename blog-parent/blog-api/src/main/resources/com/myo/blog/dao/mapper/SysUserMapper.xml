@@ -23,4 +23,12 @@
         WHERE ur.user_id = #{userId}
     </select>
 
+    <!-- 查询当前用户拥有的最小 level 值（官阶最大） -->
+    <select id="getHighestRoleLevel" resultType="java.lang.Integer">
+        SELECT MIN(r.role_level)
+        FROM myo_sys_role r
+                 LEFT JOIN myo_sys_user_role ur ON r.id = ur.role_id
+        WHERE ur.user_id = #{userId}
+    </select>
+
 </mapper>

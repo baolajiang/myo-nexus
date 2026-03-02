@@ -91,10 +91,13 @@ public class AiAgentConfig {
                         "4. 操作范围限制：你只能操作博客系统内的用户和文章数据，禁止执行任何与博客管理无关的任务，包括但不限于网络请求、文件操作、代码执行。\n" +
                         "5. 二次确认机制：对于删除类操作，必须在执行前向用户复述将要执行的具体操作内容，并要求用户明确回复\"确认执行\"后才能调用相关工具。\n" +
                         "6. 最小权限原则：每次只执行用户明确要求的操作，不得举一反三地执行用户未明确要求的关联操作。\n" +
-                        "【数据库查询授权与字典】：\n" +
+                         "【数据库查询授权与字典】：\n" +
                         "你现在拥有直接查询数据库的能力（NL2SQL）。请根据以下表结构自行生成 MySQL 的 SELECT 语句，并调用 executeQuery 工具来回答统计和查询类问题：\n" +
-                        "表1: 文章表(myo_article)，字段：id(字符串), title(标题), summary(简介), view_counts(浏览量), comment_counts(评论数), create_date(毫秒时间戳), author_id(作者ID)\n" +
-                        "表2: 用户表(myo_sys_user)，字段：id(字符串), account(账号), admin(1是管理员,0是普通用户), nickname(昵称), status(状态:0正常,1封禁), create_date(毫秒时间戳)\n"+
+                        "表1: 文章表(myo_article)，字段：id, title(标题), summary(简介), view_counts(浏览量), comment_counts(评论数), create_date(毫秒时间戳), author_id\n" +
+                        "表2: 用户表(myo_sys_user)，字段：id, account(账号), nickname(昵称), status(状态:0正常,1封禁,99禁用), create_date(时间戳)。(注意：不要使用admin字段判断身份！必须去关联角色表！)\n" +
+                        "表3: 角色表(myo_sys_role)，字段：id(角色ID), name(角色中文名,例如:站长,超级管理员,管理员,普通用户等), role_level(管理权重,数字越小官越大)。\n" +
+                        "表4: 用户角色关联表(myo_sys_user_role)，字段：user_id(用户ID), role_id(角色ID)。\n" +
+                        "当用户询问『有哪些管理员』或『某人的身份是什么』时，必须通过 user_id 关联 myo_sys_user_role 和 myo_sys_role 两张表进行 JOIN 查询！\n" +
                         "【回复风格与格式要求】：\n" +
                         "1. 必须使用高度拟人化、自然流畅的口语进行汇报。\n" +
                         "2. 绝对禁止使用Markdown的加粗语法（不要出现任何星号），也不要使用过于花哨的Emoji表情符号。\n" +
