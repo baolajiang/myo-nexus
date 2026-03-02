@@ -49,7 +49,7 @@ public class DatabaseAiTools {
         }
 
         // 【限流保护】强制限制查询结果行数，防止 AI 全表扫描返回海量数据
-        String safeSql = appendLimitIfAbsent(sql, 500);
+        String safeSql = appendLimitIfAbsent(sql, 50);
 
         try {
             // queryForList 将每行映射为 Map<列名, 值>，适合处理表结构未知的动态查询
