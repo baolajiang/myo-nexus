@@ -131,7 +131,7 @@ public class UserAiTools {
         return aiReport.toString();
     }
 
-    // 第 3 個方法：封禁單人 (已修复越权漏洞)
+    // 第 3 個方法：封禁單人
     @Tool(description = "根據賬號(account)對目標用戶執行封禁操作")
     public String disableUser(String account) {
         SysUser currentUser = UserThreadLocal.get();
@@ -151,18 +151,17 @@ public class UserAiTools {
         return success ? "已成功在底層資料庫將該賬號封禁。" : "資料庫更新異常。";
     }
 
-    // 第 4 個方法：解封單人 (已修复越权漏洞)
+    // 第 4 個方法：解封單人
     @Tool(description = "根據賬號(account)對目標用戶執行解封操作")
     public String enableUser(String account) {
         SysUser currentUser = UserThreadLocal.get();
         if (currentUser == null || !sysUserService.hasPermission(currentUser.getId(), "user:status")) {
             return "操作失敗：系統拒絕執行。";
         }
-
+        // 获取目标用户
         SysUser targetUser = sysUserService.findUserByAccount(account);
         if (targetUser == null) return "解封失敗：未找到該賬號";
-
-        // 执行防越权拦截
+        // 执行防越权拦截（防止下级解封上级）
         String blockMsg = checkLevelPermission(currentUser, targetUser, "解封");
         if (blockMsg != null) return blockMsg;
 
