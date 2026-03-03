@@ -57,7 +57,9 @@ public class AdminAiController {
      * AI 智能体，由 AiAgentConfig 构建并注册为 Spring Bean，此处直接注入使用
      */
     private final ReactAgent blogAdminAgent;
-
+    /**
+     * Redis 模板，用于存储每个管理员的会话上下文（threadId 为键）
+     */
     private final StringRedisTemplate stringRedisTemplate;
 
     private final SysUserService sysUserService;
