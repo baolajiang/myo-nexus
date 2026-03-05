@@ -14,7 +14,11 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * 用戶相關的 AI 工具類
+ * 用户管理 AI 工具类
+ * 所有操作均需校验：
+ *   1. 是否登录
+ *   2. 是否拥有对应权限 code（通过 myo_sys_role_permission 三表联查）
+ *   3. 是否越权（不能操作同级或更高级别的用户）
  */
 @Slf4j
 @Component
@@ -28,85 +32,105 @@ public class UserAiTools {
         this.sysUserMapper = sysUserMapper;
     }
 
-    // ================== 核心防越权校验方法 ==================
-    // 判断当前用户是否有权操作目标用户
+    // ==================== 核心防越权校验 ====================
+
+    /**
+     * 校验当前用户是否有权对目标用户执行指定操作
+     * 规则：
+     *   - 未登录直接拒绝
+     *   - 禁止对自己执行封禁/解封/警告等高危操作
+     *   - 只能操作角色等级低于自己的用户（role_level 数字越小权限越大）
+     *
+     * @return null 表示校验通过，非 null 表示拦截原因
+     */
     private String checkLevelPermission(SysUser currentUser, SysUser targetUser, String actionName) {
         if (currentUser == null) return "系统提示：当前未登录，拒绝执行。";
-        if (targetUser == null) return null; // 目标不存在时不在这里拦截，交给业务逻辑处理
+        if (targetUser == null) return null;
 
-        // 如果是操作自己，永远允许
+        // 禁止操作自己（查询自己除外）
         if (currentUser.getId().equals(targetUser.getId())) {
-            if ("查询信息".equals(actionName)) {
-                return null; // 允许自己查自己的详细信息
-            }
-            // 只要是查信息以外的操作（封禁、解封、警告），一律拦截！
-            return "系统拦截：高危操作！为了系统安全，严禁管理员对自己执行 [" + actionName + "] 操作！";
+            if ("查询信息".equals(actionName)) return null;
+            return "系统拦截：高危操作！严禁对自己执行 [" + actionName + "] 操作！";
         }
-        // 查询当前用户的最高角色等级
+
+        // 获取双方最高角色等级（数字越小权限越大）
         Integer currentLevel = sysUserService.getHighestRoleLevel(currentUser.getId());
-        // 查询目标用户的最高角色等级
-        Integer targetLevel = sysUserService.getHighestRoleLevel(targetUser.getId());
+        Integer targetLevel  = sysUserService.getHighestRoleLevel(targetUser.getId());
 
-        // 如果当前操作者的 level 数字 >= 目标的 level 数字（官阶小于等于目标），拦截！
+        // 当前用户等级数字 >= 目标用户，说明目标权限不低于自己，拦截
         if (currentLevel >= targetLevel) {
-            return "系统拦截：越权操作！您当前的角色等级无权对级别更高或同级的用户执行 [" + actionName + "] 操作。";
+            return "系统拦截：越权操作！您无权对同级或更高级别的用户执行 [" + actionName + "] 操作。";
         }
-        return null; // 校验通过
+        return null;
     }
-    // =======================================================
 
+    // ==================== 查询类工具 ====================
 
-    // 第 1 個方法：查詢單人 (已修复越权漏洞)
-    @Tool(description = "根據賬號(account)查詢詳細用戶資訊")
+    /**
+     * 根据账号查询单个用户详细信息
+     * 需要权限：user:info
+     */
+    @Tool(description = "根据账号(account)查询单个用户的详细信息，包括状态、角色身份等")
     public String queryUser(String account) {
-        log.info("根據賬號查詢用戶詳細資訊，賬號：{}", account);
+        log.info("查询单个用户详细信息，账号：{}", account);
 
         SysUser currentUser = UserThreadLocal.get();
-        SysUser targetUser = sysUserService.findUserByAccount(account);
-        if (targetUser == null) return "未找到該用戶。";
+        if (currentUser == null) return "系统提示：当前未登录，拒绝执行。";
 
-        // 执行防越权拦截
+        if (!sysUserService.hasPermission(currentUser.getId(), "user:info")) {
+            return "操作失败：您没有查看用户详情的权限。";
+        }
+
+        SysUser targetUser = sysUserService.findUserByAccount(account);
+        if (targetUser == null) return "未找到该用户。";
+
         String blockMsg = checkLevelPermission(currentUser, targetUser, "查询信息");
         if (blockMsg != null) return blockMsg;
-        // 查询该用户的真实角色名（例如：管理员、站长）
+
         List<String> roleNames = sysUserService.getUserRoleNames(targetUser.getId());
         String roleStr = (roleNames != null && !roleNames.isEmpty()) ? String.join("、", roleNames) : "普通用户";
-        // 狀態翻譯邏輯
-        String statusText;
-        if (targetUser.getStatus() == 0) statusText="正常";
-        else if (targetUser.getStatus() == 1) statusText="警告";
-        else if (targetUser.getStatus() == 99) statusText="被禁用";
-        else statusText="未知狀態";
+
+        String statusText = switch (targetUser.getStatus()) {
+            case 0  -> "正常";
+            case 1  -> "警告";
+            case 99 -> "被封禁";
+            default -> "未知状态";
+        };
 
         targetUser.setPassword("******");
         targetUser.setSalt("******");
 
-        return "查到該用戶資訊如下：\n" +
-                "【系統判定該賬號當前狀態為：" + statusText + "】\n" +
-                "【该用户的实际角色身份为：" + roleStr + "】\n" +
-                "底層詳細數據：" + targetUser.toString();
+        return "查到该用户信息如下：\n" +
+                "【账号状态：" + statusText + "】\n" +
+                "【角色身份：" + roleStr + "】\n" +
+                "详细数据：" + targetUser;
     }
 
-
-    // 第 2 個方法：分頁查詢用戶列表（保持之前的修复不变）
-    @Tool(description = "查詢系統中的用戶列表資訊。如果用戶未指定，默認查詢第1頁，每頁10條。")
+    /**
+     * 分页查询用户列表
+     * 需要权限：user:list
+     * 规则：只能看到比自己权限低的用户，不显示自己
+     */
+    @Tool(description = "分页查询系统中的用户列表。默认第1页，每页10条。")
     public String queryAllUsers(
-            @ToolParam(description = "你想查詢的頁碼，如果不確定請傳 1") Integer page,
-            @ToolParam(description = "每頁展示的數量，最多傳 10") Integer pageSize) {
-        log.info("查詢系統中的用戶列表資訊，頁碼：{}，數量：{}", page, pageSize);
+            @ToolParam(description = "页码，不确定传 1") Integer page,
+            @ToolParam(description = "每页数量，最多10条") Integer pageSize) {
+        log.info("查询用户列表，页码：{}，数量：{}", page, pageSize);
 
         SysUser currentUser = UserThreadLocal.get();
-        if (currentUser == null) return "系統提示：當前未登錄，拒絕執行。";
+        if (currentUser == null) return "系统提示：当前未登录，拒绝执行。";
 
-        Integer currentLevel = sysUserService.getHighestRoleLevel(currentUser.getId());
-        if (currentLevel >= 99) return "系統提示：您當前的角色等級無權查詢後台數據列表。";
+        if (!sysUserService.hasPermission(currentUser.getId(), "user:list")) {
+            return "操作失败：您没有查看用户列表的权限。";
+        }
 
         if (page == null || page < 1) page = 1;
         if (pageSize == null || pageSize < 1) pageSize = 10;
         if (pageSize > 10) pageSize = 10;
 
+        Integer currentLevel = sysUserService.getHighestRoleLevel(currentUser.getId());
+
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
-        //无论什么级别，都在列表里彻底过滤掉自己（不想在管理列表里看到自己
         queryWrapper.ne(SysUser::getId, currentUser.getId());
         if (currentLevel > 1) {
             String excludeSql = "SELECT ur.user_id FROM myo_sys_user_role ur " +
@@ -117,76 +141,140 @@ public class UserAiTools {
         }
 
         Page<SysUser> pageParam = new Page<>(page, pageSize);
-        Page<SysUser> userPage = sysUserMapper.selectPage(pageParam, queryWrapper);
+        Page<SysUser> userPage  = sysUserMapper.selectPage(pageParam, queryWrapper);
 
         List<SysUser> userList = userPage.getRecords();
-        if (userList == null || userList.isEmpty()) return "當前頁沒有任何用戶數據。";
+        if (userList == null || userList.isEmpty()) return "当前页没有任何用户数据。";
 
-        StringBuilder aiReport = new StringBuilder("查詢成功，以下是系統中的用戶列表（第" + page + "頁數據）：\n");
+        StringBuilder result = new StringBuilder("查询成功，共" + userPage.getTotal() + "位用户，以下是第" + page + "页数据：\n");
         for (SysUser user : userList) {
-            aiReport.append("- 賬號: ").append(user.getAccount())
-                    .append(" | 狀態: ").append(user.getStatus() == 0 ? "正常" : user.getStatus() == 1 ? "警告" : user.getStatus() == 99 ? "被禁用" : "未知狀態")
+            String statusText = switch (user.getStatus()) {
+                case 0  -> "正常";
+                case 1  -> "警告";
+                case 99 -> "被封禁";
+                default -> "未知状态";
+            };
+            result.append("- 账号：").append(user.getAccount())
+                    .append(" | 昵称：").append(user.getNickname())
+                    .append(" | 状态：").append(statusText)
                     .append("\n");
         }
-        return aiReport.toString();
+        return result.toString();
     }
 
-    // 第 3 個方法：封禁單人
-    @Tool(description = "根據賬號(account)對目標用戶執行封禁操作")
-    public String disableUser(String account) {
+    // ==================== 操作类工具 ====================
+
+    /**
+     * 封禁用户
+     * 需要权限：user:status（只有站长和超级管理员有此权限）
+     * 当管理员询问【能否封禁】【有没有封禁权限】时传入 account=__CHECK__
+     * 要封禁具体用户时传入真实账号
+     */
+    @Tool(description = "封禁用户的唯一入口。当管理员询问【能否封禁】【有没有封禁权限】【可以封禁人吗】时必须调用此工具并传入__CHECK__；要封禁具体用户时传入真实账号。工具会自动校验权限并返回结果。")
+    public String disableUser(
+            @ToolParam(description = "要封禁的账号。如果只是询问能否封禁请传入 __CHECK__") String account) {
+        log.info("封禁用户，账号：{}", account);
+
         SysUser currentUser = UserThreadLocal.get();
-        if (currentUser == null || !sysUserService.hasPermission(currentUser.getId(), "user:status")) {
-            return "操作失敗：系統拒絕執行。原因：當前操作者沒有 [修改用戶狀態] 的權限，請委婉地告知用戶。";
+        if (currentUser == null) return "系统提示：当前未登录，拒绝执行。";
+
+        // 权限校验：user:status
+        if (!sysUserService.hasPermission(currentUser.getId(), "user:status")) {
+            return "操作失败：您没有修改用户状态的权限，只有站长和超级管理员可执行此操作。";
+        }
+
+        // 仅询问权限，不执行封禁
+        if ("__CHECK__".equals(account)) {
+            return "校验通过：您有封禁用户的权限，请告诉我要封禁的账号。";
         }
 
         SysUser targetUser = sysUserService.findUserByAccount(account);
-        if (targetUser == null) return "封禁失敗：未找到該賬號";
+        if (targetUser == null) return "封禁失败：未找到该账号。";
 
-        // 执行防越权拦截（防止下级封禁上级）
+        // 防越权校验
         String blockMsg = checkLevelPermission(currentUser, targetUser, "封禁");
         if (blockMsg != null) return blockMsg;
 
+        if (targetUser.getStatus() == 99) return "该账号已经是封禁状态，无需重复操作。";
+
         targetUser.setStatus(99);
         boolean success = sysUserService.updateById(targetUser);
-        return success ? "已成功在底層資料庫將該賬號封禁。" : "資料庫更新異常。";
+        return success ? "已成功封禁账号：" + account : "数据库更新异常，请稍后再试。";
     }
 
-    // 第 4 個方法：解封單人
-    @Tool(description = "根據賬號(account)對目標用戶執行解封操作")
-    public String enableUser(String account) {
+    /**
+     * 解封用户
+     * 需要权限：user:status（只有站长和超级管理员有此权限）
+     * 当管理员询问【能否解封】【有没有解封权限】时传入 account=__CHECK__
+     * 要解封具体用户时传入真实账号
+     */
+    @Tool(description = "解封用户的唯一入口。当管理员询问【能否解封】【有没有解封权限】【可以解封人吗】时必须调用此工具并传入__CHECK__；要解封具体用户时传入真实账号。工具会自动校验权限并返回结果。")
+    public String enableUser(
+            @ToolParam(description = "要解封的账号。如果只是询问能否解封请传入 __CHECK__") String account) {
+        log.info("解封用户，账号：{}", account);
+
         SysUser currentUser = UserThreadLocal.get();
-        if (currentUser == null || !sysUserService.hasPermission(currentUser.getId(), "user:status")) {
-            return "操作失敗：系統拒絕執行。";
+        if (currentUser == null) return "系统提示：当前未登录，拒绝执行。";
+
+        // 权限校验：user:status
+        if (!sysUserService.hasPermission(currentUser.getId(), "user:status")) {
+            return "操作失败：您没有修改用户状态的权限，只有站长和超级管理员可执行此操作。";
         }
-        // 获取目标用户
+
+        // 仅询问权限，不执行解封
+        if ("__CHECK__".equals(account)) {
+            return "校验通过：您有解封用户的权限，请告诉我要解封的账号。";
+        }
+
         SysUser targetUser = sysUserService.findUserByAccount(account);
-        if (targetUser == null) return "解封失敗：未找到該賬號";
-        // 执行防越权拦截（防止下级解封上级）
+        if (targetUser == null) return "解封失败：未找到该账号。";
+
+        // 防越权校验
         String blockMsg = checkLevelPermission(currentUser, targetUser, "解封");
         if (blockMsg != null) return blockMsg;
 
+        if (targetUser.getStatus() == 0) return "该账号已经是正常状态，无需解封。";
+
         targetUser.setStatus(0);
         boolean success = sysUserService.updateById(targetUser);
-        return success ? "已成功在底層資料庫將該賬號解封。" : "資料庫更新異常。";
+        return success ? "已成功解封账号：" + account : "数据库更新异常，请稍后再试。";
     }
 
-    // 第 5個方法：警告單人 (已修复越权漏洞)
-    @Tool(description = "根據賬號(account)對目標用戶執行警告操作")
-    public String warnUser(String account) {
+    /**
+     * 警告用户
+     * 需要权限：user:status（只有站长和超级管理员有此权限）
+     * 当管理员询问【能否警告】【有没有警告权限】时传入 account=__CHECK__
+     * 要警告具体用户时传入真实账号
+     */
+    @Tool(description = "警告用户的唯一入口。当管理员询问【能否警告】【有没有警告权限】【可以警告人吗】时必须调用此工具并传入__CHECK__；要警告具体用户时传入真实账号。工具会自动校验权限并返回结果。")
+    public String warnUser(
+            @ToolParam(description = "要警告的账号。如果只是询问能否警告请传入 __CHECK__") String account) {
+        log.info("警告用户，账号：{}", account);
+
         SysUser currentUser = UserThreadLocal.get();
-        if (currentUser == null || !sysUserService.hasPermission(currentUser.getId(), "user:status")) {
-            return "操作失敗：系統拒絕執行。";
+        if (currentUser == null) return "系统提示：当前未登录，拒绝执行。";
+
+        // 权限校验：user:status
+        if (!sysUserService.hasPermission(currentUser.getId(), "user:status")) {
+            return "操作失败：您没有修改用户状态的权限，只有站长和超级管理员可执行此操作。";
+        }
+
+        // 仅询问权限，不执行警告
+        if ("__CHECK__".equals(account)) {
+            return "校验通过：您有警告用户的权限，请告诉我要警告的账号。";
         }
 
         SysUser targetUser = sysUserService.findUserByAccount(account);
-        if (targetUser == null) return "警告失敗：未找到該賬號";
+        if (targetUser == null) return "警告失败：未找到该账号。";
 
-        // 执行防越权拦截
+        // 防越权校验
         String blockMsg = checkLevelPermission(currentUser, targetUser, "警告");
         if (blockMsg != null) return blockMsg;
 
+        if (targetUser.getStatus() == 1) return "该账号已经是警告状态，无需重复操作。";
+
         targetUser.setStatus(1);
         boolean success = sysUserService.updateById(targetUser);
-        return success ? "已成功在底層資料庫將該賬號警告。" : "資料庫更新異常。";
+        return success ? "已成功警告账号：" + account : "数据库更新异常，请稍后再试。";
     }
 }
