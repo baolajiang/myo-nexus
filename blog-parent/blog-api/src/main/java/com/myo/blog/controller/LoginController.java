@@ -62,7 +62,7 @@ public class LoginController {
 
     /**
      * 获取一次性票据 (Ticket)
-     * 修正版：通过查询权限列表来验证是否为管理员
+     * 通过查询权限列表来验证是否为管理员
      */
     @PostMapping("ticket")
     public Result getTicket(@RequestHeader("Authorization") String token) {
@@ -73,7 +73,7 @@ public class LoginController {
         }
 
         // 2.去数据库查该用户的权限列表
-        // 既然没有 admin 字段，那就看他有没有分配过权限。
+        // 既然没有 字段，那就看他有没有分配过权限。
         // 如果 permissions 为空，说明他是普通用户，不能进后台。
         List<String> permissions = sysUserMapper.findPermissionsByUserId(user.getId());
 

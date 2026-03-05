@@ -18,7 +18,7 @@
         <div class="h-info">
           <div class="h-basic">
             <span class="nickname">{{ userInfo.nickname || '神秘旅人' }}</span>
-            <span class="uid">UID: {{ userId }}</span>
+            <span class="uid"> {{userInfo.sex}}UID: {{ userId }}</span>
             <el-tag size="mini" type="info" class="level-tag">Lv.{{ userInfo.level || 1 }}</el-tag>
           </div>
           <div class="h-sign">{{ userInfo.motto || '这个人很懒，什么都没有写~' }}</div>
@@ -136,6 +136,7 @@ export default {
       pageSize: 5,
       currentPage: 1,
       userId: '',
+      sex: 0,
     }
   },
   computed: {
@@ -166,21 +167,24 @@ export default {
     fetchUserInfo() {
       // 这里的逻辑是：如果是看自己，优先用store里的最新数据；如果是看别人，走接口
       if (this.isMe) {
+        console.log("性别"+this.$store.state.sex);
         this.userInfo = {
           nickname: this.$store.state.account,
           avatar: this.$store.state.avatar,
+          sex: this.$store.state.sex,
           motto: '在这里，记录思想的轨迹。', // Store里可能没存签名，暂时写死或从接口取
           level: 6
 
         };
       } else {
-        getUserPublicInfo(this.userId).then(res => {
+        getUserPublicInfo(this.userId).then(res => {console.log(res)
           if (res.success) {
             this.userInfo = {
               id: res.data.id,
               // 同理，后端返回的数据里如果有 nickname 就用，没有就用 account
               nickname: res.data.nickname || res.data.account,
               avatar: res.data.avatar,
+              sex: res.data.sex,
               motto: '这个家伙很懒，什么都没写'
             };
           } else {

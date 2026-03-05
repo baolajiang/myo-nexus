@@ -1,7 +1,7 @@
 package com.myo.blog.entity;
 
 import lombok.Data;
-
+//作用：登录后返回给前端的用户信息
 @Data
 public class LoginUserVo {
 
@@ -12,6 +12,8 @@ public class LoginUserVo {
     private String nickname;//昵称
 
     private String avatar;//头像
+
+    private Integer sex;//性别 0未知 1男 2女
 
     private String email;//邮箱
 

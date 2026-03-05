@@ -14,6 +14,7 @@ export default new Vuex.Store({
     token: getToken(),
     email: '',
     mobilePhoneNumber: '',
+    sex: 0,
     // 游客数据初始值（空的）
     guest: {
       uuid: '',
@@ -37,13 +38,19 @@ export default new Vuex.Store({
       state.avatar = avatar
     },
     SET_ID: (state, id) => {
+      console.log('设置ID:', id)
       state.id = id
     },
     SET_EMAIL: (state, email) => {
+      console.log('设置邮箱:', email)
       state.email = email
     },
     SET_MOBILE_PHONE_NUMBER: (state, mobilePhoneNumber) => {
       state.mobilePhoneNumber = mobilePhoneNumber
+    },
+    SET_SEX: (state, sex) => {
+      console.log('设置性别:', sex)
+      state.sex = sex
     },
     // 核心逻辑：初始化游客身份
     INIT_GUEST(state) {
@@ -130,6 +137,7 @@ export default new Vuex.Store({
             commit('SET_AVATAR', data.data.avatar)
             commit('SET_ID', data.data.id)
             commit('SET_EMAIL', data.data.email)
+            commit('SET_SEX', data.data.sex)
             commit('SET_MOBILE_PHONE_NUMBER', data.data.mobilePhoneNumber)
             resolve(data)
           } else {
@@ -139,6 +147,7 @@ export default new Vuex.Store({
             commit('SET_ID', '')
             commit('SET_EMAIL', '')
             commit('SET_MOBILE_PHONE_NUMBER', '')
+            commit('SET_SEX', 0)
             removeToken()
             resolve(data)
           }

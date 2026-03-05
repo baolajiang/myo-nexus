@@ -223,11 +223,14 @@ public class LoginServiceImpl implements LoginService {
     // ================== 【注册逻辑】 ==================
     @Override
     public Result register(LoginParam loginParam) {
+
         String account = loginParam.getAccount();
         String password = loginParam.getPassword();
         String nickname = loginParam.getNickname();
+        Integer sex = loginParam.getSex();
         String email = loginParam.getEmail();
         String code = loginParam.getCode();
+        String avatar = loginParam.getAvatar();
 
         log.info("注册请求开始 - 账号: {}, 邮箱: {}, 昵称: {}", account, email, nickname);
 
@@ -236,6 +239,7 @@ public class LoginServiceImpl implements LoginService {
                 || StringUtils.isBlank(nickname)
                 || StringUtils.isBlank(email)
                 || StringUtils.isBlank(code)
+                || (sex != 0 && sex != 1 && sex != 2)
         ){
             log.warn("注册参数校验失败 - 账号: {}, 邮箱: {}, 昵称: {}", account, email, nickname);
             return Result.fail(ErrorCode.PARAMS_ERROR.getCode(),ErrorCode.PARAMS_ERROR.getMsg());
@@ -262,10 +266,11 @@ public class LoginServiceImpl implements LoginService {
         sysUser = new SysUser();
         sysUser.setNickname(nickname);
         sysUser.setAccount(account);
+        sysUser.setSex(sex);
         sysUser.setPassword(DigestUtils.md5Hex(password+slat));
         sysUser.setCreateDate(System.currentTimeMillis());
         sysUser.setLastLogin(System.currentTimeMillis());
-        sysUser.setAvatar("/static/img/tx.gif");
+        sysUser.setAvatar(avatar);
 
         sysUser.setDeleted(0);
         sysUser.setSalt("");

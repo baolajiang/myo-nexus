@@ -58,7 +58,7 @@ public class SysUserServiceImpl implements SysUserService {
         }
         UserVo userVo  = new UserVo();
         BeanUtils.copyProperties(sysUser,userVo);
-        userVo.setId(sysUser.getId()); // 直接赋值，无需 String.valueOf
+
         return userVo;
     }
 
@@ -107,9 +107,11 @@ public class SysUserServiceImpl implements SysUserService {
         LoginUserVo loginUserVo = new LoginUserVo();
         loginUserVo.setId(sysUser.getId()); // 直接赋值
         loginUserVo.setNickname(sysUser.getNickname());
+        loginUserVo.setSex(sysUser.getSex());
         loginUserVo.setAvatar(sysUser.getAvatar());
         loginUserVo.setAccount(sysUser.getAccount());
         loginUserVo.setEmail(sysUser.getEmail());
+        loginUserVo.setSex(sysUser.getSex());
         loginUserVo.setMobilePhoneNumber(sysUser.getMobilePhoneNumber());
         return Result.success(loginUserVo);
     }
@@ -181,6 +183,10 @@ public class SysUserServiceImpl implements SysUserService {
         }
         if (StringUtils.isNotBlank(userParam.getMobilePhoneNumber())) {
             updateWrapper.set(SysUser::getMobilePhoneNumber, userParam.getMobilePhoneNumber());
+            hasUpdate = true;
+        }
+        if (userParam.getSex() != null) {
+            updateWrapper.set(SysUser::getSex, userParam.getSex());
             hasUpdate = true;
         }
 

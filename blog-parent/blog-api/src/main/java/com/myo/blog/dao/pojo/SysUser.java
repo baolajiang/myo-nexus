@@ -14,7 +14,7 @@ public class SysUser {
 
     private String account;
 
-
+    private Integer sex; // 0未知 1男 2女
 
     private String avatar;
 

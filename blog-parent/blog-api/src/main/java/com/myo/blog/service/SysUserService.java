@@ -18,7 +18,7 @@ import java.util.List;
  */
 public interface SysUserService {
 
-    UserVo findUserVoById(String id);
+    UserVo findUserVoById(String id);//根据id查询用户信息
 
     SysUser findUserById(String id);
 
