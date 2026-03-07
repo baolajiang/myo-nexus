@@ -10,6 +10,6 @@ import lombok.Data;
  */
 @Data
 public class CaptchaParam {
-    private String verCode;
-    private String verKey;
+    private String verCode; // 验证码
+    private String verKey; // 验证码 key
 }

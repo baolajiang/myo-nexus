@@ -54,4 +54,21 @@ export function getTicket(token) {
   })
 }
 
+// 获取验证码接口
+export function getCaptcha() {
+  return request({
+    url: '/yzm/captchaClass',
+    method: 'post'
+  })
+}
+
+// 验证验证码接口
+export function verifyCaptcha(data) {
+  return request({
+    url: '/yzm/login',
+    method: 'post',
+    data
+  })
+}
+
 

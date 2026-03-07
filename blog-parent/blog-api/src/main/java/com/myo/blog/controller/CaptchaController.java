@@ -13,10 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-// 注意：已删除 javax.servlet 的导入，因为代码中并没有实际使用它们
-// 如果将来需要用到 Request/Response，请引入 jakarta.servlet.*
 
 /**
  * Created by IntelliJ IDEA.
@@ -30,7 +29,7 @@ public class CaptchaController {
 
     @Autowired
     private RedisTemplate<String,String> redisTemplate;
-
+    // 生成验证码
     @PostMapping("/captchaClass")
     public Result captchaClass() throws Exception {
         // easy-captcha 1.6.2 可能在某些环境下会有字体问题，但在 base64 模式下通常可用
@@ -45,7 +44,7 @@ public class CaptchaController {
          * **/
         specCaptcha.setCharType(Captcha.TYPE_DEFAULT);
         String verCode = specCaptcha.text().toLowerCase();
-        String key = "yzm_"+verCode;
+        String key = "yzm:" + UUID.randomUUID().toString().replace("-", "");
 
         // 存入redis并设置过期时间为2分钟
         redisTemplate.opsForValue().set(key, verCode, 2, TimeUnit.MINUTES);
@@ -55,7 +54,7 @@ public class CaptchaController {
         map.put("image", specCaptcha.toBase64());
         return Result.success(map);
     }
-
+    // 登录时验证验证码
     @PostMapping("/login")
     public Result login(@RequestBody CaptchaParam captcha){
         String verKey = captcha.getVerKey();
@@ -72,11 +71,8 @@ public class CaptchaController {
         }
 
         // 验证成功，删除验证码
-        redisTemplate.delete("yzm_" + redisCode); // 这里的逻辑原来的代码似乎有点奇怪，通常应该删 verKey
-        // 原逻辑是删除 "yzm_"+redisCode，假设 key 就是这个格式。
-        // 但上面的 key 是 "yzm_" + verCode。
-        // 如果 verKey 传进来的是 key (例如 "yzm_abcde")，那么这里 delete(verKey) 更合理。
-        // 按照您原有的逻辑保留，但建议确认一下删除逻辑是否符合预期。
+        redisTemplate.delete(verKey);
+
 
         return Result.success("验证码正确");
     }

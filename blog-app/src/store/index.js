@@ -38,18 +38,18 @@ export default new Vuex.Store({
       state.avatar = avatar
     },
     SET_ID: (state, id) => {
-      console.log('设置ID:', id)
+
       state.id = id
     },
     SET_EMAIL: (state, email) => {
-      console.log('设置邮箱:', email)
+
       state.email = email
     },
     SET_MOBILE_PHONE_NUMBER: (state, mobilePhoneNumber) => {
       state.mobilePhoneNumber = mobilePhoneNumber
     },
     SET_SEX: (state, sex) => {
-      console.log('设置性别:', sex)
+
       state.sex = sex
     },
     // 核心逻辑：初始化游客身份
@@ -192,6 +192,7 @@ export default new Vuex.Store({
         commit('SET_NAME', '')
         commit('SET_AVATAR', '')
         commit('SET_ID', '')
+        commit('SET_EMAIL', '')
         removeToken()
         resolve()
       }).catch(error => {

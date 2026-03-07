@@ -138,12 +138,13 @@ public class LoginServiceImpl implements LoginService {
         }
 
         // 1. 先查 Redis
-        String userJson = redisTemplate.opsForValue().get("TOKEN_" + token);
+        String userJson = redisTemplate.opsForValue().get("TOKEN:" + token);
         if (StringUtils.isNotBlank(userJson)){
             // Redis 命中，正常返回并续期
             SysUser sysUser = JSON.parseObject(userJson, SysUser.class);
-            redisTemplate.expire("TOKEN_" + token, 3, TimeUnit.DAYS);
-            redisTemplate.expire("USER_TOKEN_" + sysUser.getId(), 3, TimeUnit.DAYS);
+            redisTemplate.expire("TOKEN:" + token, 3, TimeUnit.DAYS);
+            redisTemplate.expire("USER_TOKEN:" + sysUser.getId(), 3, TimeUnit.DAYS);
+
             return sysUser;
         }
 
@@ -181,9 +182,9 @@ public class LoginServiceImpl implements LoginService {
         SysUser sysUser = checkToken(token);
 
         // 1. 删 Redis
-        redisTemplate.delete("TOKEN_" + token);
+        redisTemplate.delete("TOKEN:" + token);
         if (sysUser != null) {
-            redisTemplate.delete("USER_TOKEN_" + sysUser.getId());
+            redisTemplate.delete("USER_TOKEN:" + sysUser.getId());
 
             // 2. 删 MySQL
             userTokenMapper.deleteById(sysUser.getId());
@@ -307,7 +308,7 @@ public class LoginServiceImpl implements LoginService {
     @Override
     public Result kick(Long userId) {
         // 1. 尝试从 Redis 获取 Token
-        String token = redisTemplate.opsForValue().get("USER_TOKEN_" + userId);
+        String token = redisTemplate.opsForValue().get("USER_TOKEN:" + userId);
 
         // 2. 如果 Redis 挂了或空的，尝试从 DB 捞一下 Token (为了能删掉它)
         if (StringUtils.isBlank(token)) {
@@ -322,8 +323,8 @@ public class LoginServiceImpl implements LoginService {
         }
 
         // 3. 删 Redis
-        redisTemplate.delete("TOKEN_" + token);
-        redisTemplate.delete("USER_TOKEN_" + userId);
+        redisTemplate.delete("TOKEN:" + token);
+        redisTemplate.delete("USER_TOKEN:" + userId);
 
         // 4. 删 MySQL
         userTokenMapper.deleteById(userId);
@@ -355,7 +356,8 @@ public class LoginServiceImpl implements LoginService {
     }
 
     private void saveTokenToRedis(String token, SysUser sysUser) {
-        redisTemplate.opsForValue().set("TOKEN_" + token, JSON.toJSONString(sysUser), 3, TimeUnit.DAYS);
-        redisTemplate.opsForValue().set("USER_TOKEN_" + sysUser.getId(), token, 3, TimeUnit.DAYS);
+        redisTemplate.opsForValue().set("TOKEN:" + token, JSON.toJSONString(sysUser), 3, TimeUnit.DAYS);
+        redisTemplate.opsForValue().set("USER_TOKEN:" + sysUser.getId(), token, 3, TimeUnit.DAYS);
+
     }
 }

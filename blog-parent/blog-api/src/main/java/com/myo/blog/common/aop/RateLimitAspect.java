@@ -52,7 +52,6 @@ public class RateLimitAspect {
     @Value("${spring.mail.username}")
     private String adminEmail;
 
-
     @Around("@annotation(com.myo.blog.common.aop.RateLimit)")
     public Object interceptor(ProceedingJoinPoint joinPoint) throws Throwable {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();

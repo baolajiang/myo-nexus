@@ -81,7 +81,7 @@ public class UsersController {
                 log.info("用户资料修改成功 - IP: {}, 账号: {}, 影响行数: {}", ip, account, i);
                 if (token != null) {
                     // 删除 Redis 缓存
-                    redisTemplate.delete("TOKEN_" + token);
+                    redisTemplate.delete("TOKEN:" + token);
                 }
             }
 

@@ -54,7 +54,7 @@ public class BlacklistSyncTask {
             // 第三步：异常情况（Redis 重启/清空）
             // ==========================================
             // 走到这里说明标记没了！意味着 Redis 内存被清空了，黑名单失效了！
-            log.warn(">>> 🚨 警报：哨兵监测到 Redis 黑名单标记丢失（可能发生了重启），正在执行紧急恢复...");// 3. 故障检测与恢复（哨兵报警并修复）
+            log.warn(">>> 警报：哨兵监测到 Redis 黑名单标记丢失（可能发生了重启），正在执行紧急恢复...");// 3. 故障检测与恢复（哨兵报警并修复）
 
             // 立即调用 Runner 的方法，从 MySQL 把所有黑名单重新加载到 Redis，并重新插上标记
             ipBlacklistRunner.loadBlacklist();
@@ -66,7 +66,7 @@ public class BlacklistSyncTask {
             // 如果连 redisTemplate.hasKey 都报错，说明 Redis 服务彻底挂了（连不上）。
             // 此时捕获异常，防止报错日志刷屏，等待运维修复 Redis。
             // (注：此时拦截器 IpBlackListInterceptor 会自动降级查数据库，不用担心安全问题)
-            log.error(">>> ❌ 黑名单哨兵检查失败 (Redis连接异常): {}", e.getMessage());
+            log.error(">>>  黑名单哨兵检查失败 (Redis连接异常): {}", e.getMessage());
         }
     }
 }

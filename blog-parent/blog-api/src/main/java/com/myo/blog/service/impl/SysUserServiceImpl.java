@@ -79,6 +79,7 @@ public class SysUserServiceImpl implements SysUserService {
         queryWrapper.eq(SysUser::getPassword,password);
         queryWrapper.select(SysUser::getAccount,
                 SysUser::getStatus,
+                SysUser::getSex,
                 SysUser::getId,
                 SysUser::getAvatar,
                 SysUser::getNickname,
@@ -107,11 +108,11 @@ public class SysUserServiceImpl implements SysUserService {
         LoginUserVo loginUserVo = new LoginUserVo();
         loginUserVo.setId(sysUser.getId()); // 直接赋值
         loginUserVo.setNickname(sysUser.getNickname());
-        loginUserVo.setSex(sysUser.getSex());
         loginUserVo.setAvatar(sysUser.getAvatar());
         loginUserVo.setAccount(sysUser.getAccount());
         loginUserVo.setEmail(sysUser.getEmail());
         loginUserVo.setSex(sysUser.getSex());
+
         loginUserVo.setMobilePhoneNumber(sysUser.getMobilePhoneNumber());
         return Result.success(loginUserVo);
     }
@@ -205,11 +206,11 @@ public class SysUserServiceImpl implements SysUserService {
     }
 
     private void updateRedisCache(String userId) { // Long -> String
-        String token = stringRedisTemplate.opsForValue().get("USER_TOKEN_" + userId);
+        String token = stringRedisTemplate.opsForValue().get("USER_TOKEN:" + userId);
         if (StringUtils.isNotBlank(token)) {
             SysUser newestUser = sysUserMapper.selectById(userId);
             if (newestUser != null) {
-                stringRedisTemplate.opsForValue().set("TOKEN_" + token, JSON.toJSONString(newestUser), 3, TimeUnit.DAYS);
+                stringRedisTemplate.opsForValue().set("TOKEN:" + token, JSON.toJSONString(newestUser), 3, TimeUnit.DAYS);
             }
         }
     }
@@ -262,7 +263,7 @@ public class SysUserServiceImpl implements SysUserService {
         for (SysUser u : records) {
             u.setPassword(null);
             u.setSalt(null);
-            String key = "USER_TOKEN_" + u.getId();
+            String key = "USER_TOKEN:" + u.getId();
             Boolean isOnline = stringRedisTemplate.hasKey(key);
             u.setOnline(isOnline);
         }
@@ -307,9 +308,9 @@ public class SysUserServiceImpl implements SysUserService {
             return Result.fail(ErrorCode.SYSTEM_ERROR.getCode(), "系统异常");
         }
     }
-
-    private void kickUserOffline(String userId) { // Long -> String
-        String tokenKey = "USER_TOKEN_" + userId;
+    // 强制将用户踢出系统，删除所有相关缓存
+    private void kickUserOffline(String userId) {
+        String tokenKey = "USER_TOKEN:" + userId;
         String token = stringRedisTemplate.opsForValue().get(tokenKey);
 
         if (StringUtils.isBlank(token)) {
@@ -322,7 +323,7 @@ public class SysUserServiceImpl implements SysUserService {
         }
 
         if (StringUtils.isNotBlank(token)) {
-            stringRedisTemplate.delete("TOKEN_" + token);
+            stringRedisTemplate.delete("TOKEN:" + token);
         }
         stringRedisTemplate.delete(tokenKey);
 
@@ -330,10 +331,10 @@ public class SysUserServiceImpl implements SysUserService {
         deleteWrapper.eq(UserToken::getUserId, userId);
         userTokenMapper.delete(deleteWrapper);
 
-        stringRedisTemplate.delete("USER_STATUS_" + userId);
-        stringRedisTemplate.delete("USER_INFO_" + userId);
-        stringRedisTemplate.delete("ONLINE_USER_" + userId);
-        stringRedisTemplate.delete("USER_PERMISSIONS_" + userId);
+        stringRedisTemplate.delete("USER_STATUS:" + userId);
+        stringRedisTemplate.delete("USER_INFO:" + userId);
+        stringRedisTemplate.delete("ONLINE_USER:" + userId);
+        stringRedisTemplate.delete("USER_PERMISSIONS:" + userId);
 
         System.out.println("用户 " + userId + " 被强制踢下线，删除所有相关缓存");
     }

@@ -1,359 +1,660 @@
 <template>
-  <div id="login" v-title data-title="月之别邸 - 契约">
-    <div class="login-bg"></div>
+  <div class="auth-root" v-title :data-title="isRegister ? '月之别邸 · 缔结' : '月之别邸 · 归来'">
 
-    <div class="scene" :style="{ height: isFlipped ? '700px' : '520px' }">
-      <div class="luna-card" ref="lunaCard">
+    <!-- 背景 -->
+    <div class="bg"></div>
 
-        <div class="card-face face-front" :style="{ zIndex: isFlipped ? 0 : 2 }">
-          <div class="card-content">
-            <div class="header-deco">
-              <span class="moon-icon">☾</span>
-              <span class="title-en">Luna Manor</span>
+    <!-- 卡片容器（翻转轴） -->
+    <div class="card-scene">
+      <div class="card" :class="{ flipped: isRegister }">
+
+        <!-- ===== 正面：登录 ===== -->
+        <div class="card-face card-front">
+          <div class="card-inner">
+            <div class="card-head">
+              <p class="card-sub">LUNA MANOR</p>
+              <h2 class="card-title">欢迎回来</h2>
             </div>
-            <h2 class="main-title">欢迎回来</h2>
-            <p class="sub-title">穿越回廊，重返你的精神驻地</p>
 
-            <el-form ref="loginForm" :model="loginForm" :rules="loginRules" class="luna-form">
-              <el-form-item prop="account">
-                <div class="input-wrapper">
-                  <input class="luna-input" placeholder="契约之名 (账号)" v-model="loginForm.account" />
-                  <span class="focus-border"></span>
-                </div>
-              </el-form-item>
+            <div class="fl-wrap">
+              <input class="fl-input" id="l-account" v-model="loginForm.account"
+                     autocomplete="off" placeholder=" " />
+              <label class="fl-label" for="l-account">账号</label>
+              <div class="fl-bar"></div>
+              <div class="fl-err"><span v-if="loginErr.account">{{ loginErr.account }}</span></div>
+            </div>
 
-              <el-form-item prop="password">
-                <div class="input-wrapper">
-                  <input class="luna-input" placeholder="言灵 (密码)" type="password" v-model="loginForm.password" />
-                  <span class="focus-border"></span>
-                </div>
-              </el-form-item>
-            </el-form>
+            <div class="fl-wrap">
+              <input class="fl-input" id="l-password" type="password" v-model="loginForm.password"
+                     placeholder=" " />
+              <label class="fl-label" for="l-password">密码</label>
+              <div class="fl-bar"></div>
+              <div class="fl-err"><span v-if="loginErr.password">{{ loginErr.password }}</span></div>
+            </div>
 
-            <div class="actions">
-              <div class="luna-btn primary" @click.prevent="login('loginForm')">
-                <span>确认登入</span>
+            <!-- 图形验证码 -->
+            <div class="captcha-row">
+              <div class="fl-wrap captcha-input-wrap">
+                <input class="fl-input" id="l-captcha" v-model="loginForm.verCode"
+                       placeholder=" " autocomplete="off" />
+                <label class="fl-label" for="l-captcha">验证码</label>
+                <div class="fl-bar"></div>
+                <div class="fl-err"><span v-if="loginErr.verCode">{{ loginErr.verCode }}</span></div>
+              </div>
+              <div class="captcha-img-wrap" @click="fetchCaptcha" title="点击刷新">
+                <img v-if="captchaImg" :src="captchaImg" class="captcha-img" />
+                <div v-else class="captcha-loading">加载中…</div>
               </div>
             </div>
 
-            <div class="footer-switch">
-              <span class="switch-text">还没有契约？</span>
-              <span class="switch-btn" @click="flipCard(true)">去缔结新约 <i class="el-icon-right"></i></span>
-            </div>
+            <button class="main-btn" @click="doLogin">
+              登 入<span class="btn-arrow">→</span>
+            </button>
+
+            <p class="switch-tip">
+              还没有账号？
+              <span class="sw-link" @click="go(true)">缔结新约</span>
+            </p>
           </div>
         </div>
 
-        <div class="card-face face-back" :style="{ zIndex: isFlipped ? 2 : 0 }">
-          <div class="card-content">
-            <div class="header-deco">
-              <span class="sakura-icon">❀</span>
-              <span class="title-en">New Contract</span>
+        <!-- ===== 背面：注册 ===== -->
+        <div class="card-face card-back">
+          <div class="card-inner card-inner-reg">
+
+            <div class="card-head">
+              <p class="card-sub">NEW CONTRACT</p>
+              <h2 class="card-title">缔结契约</h2>
             </div>
 
-            <h2 class="main-title">缔结契约</h2>
-            <p class="sub-title">以此为证，记录你在这个世界的故事</p>
+            <input type="file" ref="avatarInput" accept="image/*"
+                   style="display:none" @change="handleFileChange" />
 
-            <el-form ref="registerForm" :model="registerForm" :rules="registerRules" class="luna-form">
-
-
-              <el-form-item prop="nickname">
-                <div class="input-wrapper">
-                  <input class="luna-input" placeholder="行走世间之名 (昵称)" v-model="registerForm.nickname" />
-                  <span class="focus-border"></span>
-                </div>
-              </el-form-item>
-
-              <el-form-item prop="account">
-                <div class="input-wrapper">
-                  <input class="luna-input" placeholder="拟定名讳 (账号)" v-model="registerForm.account" />
-                  <span class="focus-border"></span>
-                </div>
-              </el-form-item>
-
-              <el-form-item prop="password">
-                <div class="input-wrapper">
-                  <input class="luna-input" placeholder="铭刻言灵 (密码)" type="password" v-model="registerForm.password" autocomplete="new-password" name="registerPassword"/>
-                  <span class="focus-border"></span>
-                </div>
-              </el-form-item>
-
-              <el-form-item prop="email">
-                <div class="input-wrapper">
-                  <input class="luna-input" placeholder="信笺投递处 (邮箱)" v-model="registerForm.email" />
-                  <span class="focus-border"></span>
-                </div>
-              </el-form-item>
-
-              <el-form-item prop="code">
-                <div class="input-wrapper verify-wrapper">
-                  <input class="luna-input" placeholder="信物 (验证码)" v-model="registerForm.code" style="padding-right: 90px;"/>
-                  <span class="focus-border"></span>
-                  <span class="send-code-btn" :class="{ 'disabled': isSending }" @click="handleSendCode">
-                    {{ isSending ? `${countDown}s后重发` : '获取验证码' }}
-                  </span>
-                </div>
-              </el-form-item>
-
-            </el-form>
-
-            <div class="actions">
-              <div class="luna-btn primary" @click.prevent="register('registerForm')">
-                <span>确认缔结</span>
+            <!-- 头像 -->
+            <div class="av-row" @click="$refs.avatarInput.click()">
+              <div class="av-circle">
+                <el-avatar :size="44" :src="avatarPreviewUrl">
+                  <span style="font-size:18px;color:#bbb">✦</span>
+                </el-avatar>
+                <div class="av-hover">📷</div>
+              </div>
+              <div class="av-text">
+                <span class="av-main">{{ avatarPreviewUrl ? '头像已选择' : '上传头像（可选）' }}</span>
+                <span class="av-sub">点击选择图片</span>
               </div>
             </div>
 
-            <div class="footer-switch">
-              <i class="el-icon-back" style="margin-right: 5px;"></i>
-              <span class="switch-btn" @click="flipCard(false)">返回登入</span>
+            <!-- 性别 -->
+            <div class="sex-row">
+              <span class="sex-lbl">性别</span>
+              <button v-for="s in sexOptions" :key="s.value"
+                      class="sex-chip" :class="{ on: registerForm.sex === s.value }"
+                      @click.prevent="registerForm.sex = s.value">
+                {{ s.label }}
+              </button>
             </div>
+
+            <!-- 两列：昵称 + 账号 -->
+            <div class="col2">
+              <div class="fl-wrap">
+                <input class="fl-input" id="r-nick" v-model="registerForm.nickname" placeholder=" " />
+                <label class="fl-label" for="r-nick">昵称</label>
+                <div class="fl-bar"></div>
+                <div class="fl-err"><span v-if="regErr.nickname">{{ regErr.nickname }}</span></div>
+              </div>
+              <div class="fl-wrap">
+                <input class="fl-input" id="r-acct" v-model="registerForm.account" placeholder=" " />
+                <label class="fl-label" for="r-acct">账号</label>
+                <div class="fl-bar"></div>
+                <div class="fl-err"><span v-if="regErr.account">{{ regErr.account }}</span></div>
+              </div>
+            </div>
+
+            <div class="fl-wrap">
+              <input class="fl-input" id="r-pwd" type="password"
+                     v-model="registerForm.password" placeholder=" " autocomplete="new-password" />
+              <label class="fl-label" for="r-pwd">密码</label>
+              <div class="fl-bar"></div>
+              <div class="fl-err"><span v-if="regErr.password">{{ regErr.password }}</span></div>
+            </div>
+
+            <!-- 两列：邮箱 + 验证码 -->
+            <div class="col2">
+              <div class="fl-wrap">
+                <input class="fl-input" id="r-email" v-model="registerForm.email" placeholder=" " />
+                <label class="fl-label" for="r-email">邮箱</label>
+                <div class="fl-bar"></div>
+                <div class="fl-err"><span v-if="regErr.email">{{ regErr.email }}</span></div>
+              </div>
+              <div class="fl-wrap">
+                <div class="code-line">
+                  <input class="fl-input" id="r-code" v-model="registerForm.code" placeholder=" " />
+                  <label class="fl-label" for="r-code">验证码</label>
+                  <button class="send-btn" :class="{ off: isSending }" @click.prevent="sendCode">
+                    {{ isSending ? countDown + 's' : '发送' }}
+                  </button>
+                </div>
+                <div class="fl-bar"></div>
+                <div class="fl-err"><span v-if="regErr.code">{{ regErr.code }}</span></div>
+              </div>
+            </div>
+
+            <button class="main-btn" :disabled="registering" @click="doRegister">
+              {{ registering ? '缔结中…' : '确认缔结' }}<span class="btn-arrow">→</span>
+            </button>
+
+            <p class="switch-tip">
+              已有账号？
+              <span class="sw-link" @click="go(false)">返回登入</span>
+            </p>
+
           </div>
         </div>
 
       </div>
     </div>
+
+    <!-- 裁剪弹窗 -->
+    <el-dialog title="裁剪头像" :visible.sync="cropperVisible" width="800px"
+               append-to-body :close-on-click-modal="false" custom-class="bili-cropper-dialog">
+      <div class="bili-cropper-layout">
+        <div class="cropper-left">
+          <div class="cropper-box-wrap">
+            <vueCropper ref="cropper" :img="cropperImg" :outputSize="1" outputType="png"
+                        :info="true" :full="false" :canMove="true" :canMoveBox="true"
+                        :autoCrop="true" :autoCropWidth="200" :autoCropHeight="200"
+                        :fixedBox="true" :centerBox="true" :high="true" @realTime="realTime">
+            </vueCropper>
+          </div>
+          <p style="margin-top:12px;font-size:12px;color:#999">支持 JPG、PNG，小于 2MB</p>
+        </div>
+        <div class="cropper-right">
+          <p class="preview-title">预览</p>
+          <div class="preview-item">
+            <div class="preview-circle-box" style="width:100px;height:100px">
+              <div :style="ps(100)"><div :style="previews.div">
+                <img :src="previews.url" :style="previews.img">
+              </div></div>
+            </div><p class="size-text">100px</p>
+          </div>
+          <div class="preview-item">
+            <div class="preview-circle-box" style="width:50px;height:50px">
+              <div :style="ps(50)"><div :style="previews.div">
+                <img :src="previews.url" :style="previews.img">
+              </div></div>
+            </div><p class="size-text">50px</p>
+          </div>
+        </div>
+      </div>
+      <span slot="footer">
+        <el-button @click="cropperVisible = false" plain>取消</el-button>
+        <el-button type="primary" @click="finishCrop" :loading="cropLoading">确认裁剪</el-button>
+      </span>
+    </el-dialog>
+
   </div>
 </template>
 
 <script>
-import gsap from 'gsap';
-// 引入 api
-import { sendCode } from '@/api/login'
+import { sendCode, getCaptcha, verifyCaptcha } from '@/api/login'
+import { upload }   from '@/api/upload'
 
 export default {
   name: 'Login',
   data() {
     return {
-      isFlipped: false,
-      // 验证码倒计时相关
-      isSending: false,
-      countDown: 60,
-      timer: null,
-
-      loginForm: { account: '', password: '' },
-      registerForm: { account: '', nickname: '', email: '', code: '', password: '' },
-
-      loginRules: {
-        account: [{required: true, message: '请输入契约之名', trigger: 'blur'}],
-        password: [{required: true, message: '请输入言灵', trigger: 'blur'}]
-      },
-      registerRules: {
-        account: [{required: true, message: '请输入契约之名', trigger: 'blur'}],
-        nickname: [{required: true, message: '请输入昵称', trigger: 'blur'}],
-        email: [
-          {required: true, message: '请输入邮箱', trigger: 'blur'},
-          {type: 'email', message: '邮箱格式不正确', trigger: 'blur'}
-        ],
-        code: [{required: true, message: '请输入验证码', trigger: 'blur'}],
-        password: [{required: true, message: '请输入言灵', trigger: 'blur'}]
-      }
+      isRegister: false,
+      isSending: false, countDown: 60, timer: null,
+      registering: false,
+      uploadFile: null, avatarPreviewUrl: '',
+      cropperVisible: false, cropperImg: '', cropLoading: false, previews: {},
+      loginErr: { account: '', password: '', verCode: '' },
+      regErr:   { nickname: '', account: '', password: '', email: '', code: '' },
+      sexOptions: [
+        { value: 0, label: '保密' },
+        { value: 1, label: '男生' },
+        { value: 2, label: '女生' }
+      ],
+      captchaImg: '', captchaKey: '',
+      loginForm:    { account: '', password: '', verCode: '' },
+      registerForm: { account: '', nickname: '', email: '', code: '', password: '', avatar: '', sex: 0 }
     }
   },
   mounted() {
-    // 检查当前路径是否是/register或者查询参数包含type=register
     if (this.$route.path === '/register' || this.$route.query.type === 'register') {
-      // 如果是，直接设置状态为"已翻转"
-      this.isFlipped = true;
-      // 使用 GSAP 瞬间设置角度到 -180度
-      gsap.set(this.$refs.lunaCard, { rotationY: -180 });
+      this.isRegister = true
     }
+    this.fetchCaptcha()
   },
   methods: {
-    // 切换卡片显示状态
-    flipCard(toBack) {
-      this.isFlipped = toBack;
-      gsap.to(this.$refs.lunaCard, {
-        rotationY: toBack ? -180 : 0,
-        duration: 0.8,
-        ease: "power2.inOut",
-      });
-    },
-
-    // 发送验证码逻辑
-    handleSendCode() {
-      if (this.isSending) return; // 倒计时中不可点
-
-      // 简单校验邮箱是否为空
-      if (!this.registerForm.email) {
-        this.$myMessage({ content: '请先填写邮箱地址', type: 'warning' });
-        return;
+    go(toReg) {
+      this.isRegister = toReg
+      this.loginErr = { account: '', password: '', verCode: '' }
+      this.regErr   = { nickname: '', account: '', password: '', email: '', code: '' }
+      if (!toReg) {
+        this.registerForm = { account: '', nickname: '', email: '', code: '', password: '', avatar: '', sex: 0 }
+        this.uploadFile = null; this.avatarPreviewUrl = ''
+        this.isSending = false
+        if (this.timer) { clearInterval(this.timer); this.timer = null }
       }
-      // 校验邮箱格式 (使用 ElementUI 的校验逻辑或者正则)
-      const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-      if (!emailRegex.test(this.registerForm.email)) {
-        this.$myMessage({ content: '邮箱格式不正确', type: 'warning' });
-        return;
-      }
-
-      // 开始倒计时 UI
-      this.isSending = true;
-      this.startCountDown();
-
-      // 调用后端 API
-      sendCode(this.registerForm.email).then(res => {
-        this.$myMessage({ content: '验证码已发送，请查收', type: 'success',duration: 3000,offset: 60 });
-      }).catch(err => {
-        this.$myMessage({ content: err || '发送失败', type: 'error' });
-        // 发送失败则重置倒计时
-        this.resetCountDown();
-      });
     },
-
-    startCountDown() {
-      this.countDown = 60;
+    handleFileChange(e) {
+      const file = e.target.files[0]; if (!file) return
+      if (file.size > 2 * 1024 * 1024) { this.$myMessage({ content: '图片不能超过 2MB', type: 'warning' }); return }
+      if (file.type === 'image/gif') {
+        this.uploadFile = file; this.avatarPreviewUrl = URL.createObjectURL(file); e.target.value = ''; return
+      }
+      const r = new FileReader()
+      r.onload = ev => { this.cropperImg = ev.target.result; this.cropperVisible = true }
+      r.readAsDataURL(file); e.target.value = ''
+    },
+    finishCrop() {
+      this.cropLoading = true
+      this.$refs.cropper.getCropBlob(data => {
+        this.uploadFile = new File([data], 'avatar.png', { type: 'image/png' })
+        this.avatarPreviewUrl = URL.createObjectURL(data)
+        this.cropperVisible = false; this.cropLoading = false
+      })
+    },
+    realTime(data) { this.previews = data },
+    ps(s) {
+      if (!this.previews.w) return {}
+      const sc = s / this.previews.w
+      return { width: this.previews.w + 'px', height: this.previews.h + 'px',
+        transform: `scale(${sc})`, transformOrigin: 'top left', position: 'relative' }
+    },
+    sendCode() {
+      if (this.isSending) return
+      if (!this.registerForm.email) { this.$myMessage({ content: '请先填写邮箱', type: 'warning' }); return }
+      if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/.test(this.registerForm.email)) {
+        this.$myMessage({ content: '邮箱格式不正确', type: 'warning' }); return
+      }
+      this.isSending = true; this.countDown = 60
       this.timer = setInterval(() => {
-        this.countDown--;
-        if (this.countDown <= 0) {
-          this.resetCountDown();
-        }
-      }, 1000);
+        if (--this.countDown <= 0) { this.isSending = false; clearInterval(this.timer) }
+      }, 1000)
+      sendCode(this.registerForm.email)
+        .then(() => this.$myMessage({ content: '验证码已发送', type: 'success', duration: 3000 }))
+        .catch(err => { this.$myMessage({ content: err || '发送失败', type: 'error' }); this.isSending = false; clearInterval(this.timer) })
     },
-
-    resetCountDown() {
-      this.isSending = false;
-      this.countDown = 60;
-      if (this.timer) {
-        clearInterval(this.timer);
-        this.timer = null;
-      }
-    },
-
-    login(formName) {
-      let that = this
-      this.$refs[formName].validate((valid) => {
-        if (valid) {
-          that.$store.dispatch('login', that.loginForm).then(() => {
-            if (window.history.length > 1) { that.$router.go(-1) } else { that.$router.push({path: '/'}) }
-          }).catch((error) => {
-            if (error !== 'error') { that.$myMessage({content: error, type: 'error', duration: 3000}); }
-          })
+    async fetchCaptcha() {
+      try {
+        const res = await getCaptcha()
+        if (res.success) {
+          this.captchaImg = res.data.image
+          this.captchaKey = res.data.key
+          this.loginForm.verCode = ''
         }
-      });
+      } catch (e) { console.error('验证码获取失败', e) }
     },
-    register(formName) {
-      let that = this
-      this.$refs[formName].validate((valid) => {
-        if (valid) {
-          that.$store.dispatch('register', that.registerForm).then(() => {
-            that.$myMessage({ content: '契约缔结成功', type: 'success', duration: 3000 });
-            that.flipCard(false);
-          }).catch((error) => {
-            if (error !== 'error') { that.$myMessage({ content: error, type: 'error', duration: 3000 }); }
-          })
+    doLogin() {
+      this.loginErr = { account: '', password: '', verCode: '' }
+      let e = false
+      if (!this.loginForm.account)  { this.loginErr.account  = '请输入账号'; e = true }
+      if (!this.loginForm.password) { this.loginErr.password = '请输入密码'; e = true }
+      if (!this.loginForm.verCode)  { this.loginErr.verCode  = '请输入验证码'; e = true }
+      if (e) return
+      // 先校验图形验证码
+      verifyCaptcha({ verKey: this.captchaKey, verCode: this.loginForm.verCode })
+        .then(res => {
+          const msg = res.data
+          if (msg !== '验证码正确') {
+            this.loginErr.verCode = msg || '验证码错误'
+            this.fetchCaptcha()
+            return
+          }
+          // 验证码通过，再走登录
+          this.$store.dispatch('login', { account: this.loginForm.account, password: this.loginForm.password })
+            .then(() => { window.history.length > 1 ? this.$router.go(-1) : this.$router.push('/') })
+            .catch(err => {
+              if (err !== 'error') this.$myMessage({ content: err, type: 'error', duration: 3000 })
+              this.fetchCaptcha()
+            })
+        })
+        .catch(() => { this.$myMessage({ content: '验证码校验失败', type: 'error' }); this.fetchCaptcha() })
+    },
+    async doRegister() {
+      this.regErr = { nickname: '', account: '', password: '', email: '', code: '' }
+      let e = false
+      if (!this.registerForm.nickname) { this.regErr.nickname = '请输入昵称'; e = true }
+      if (!this.registerForm.account)  { this.regErr.account  = '请输入账号'; e = true }
+      if (!this.registerForm.password) { this.regErr.password = '请输入密码'; e = true }
+      if (!this.registerForm.email)    { this.regErr.email    = '请输入邮箱'; e = true }
+      else if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/.test(this.registerForm.email))
+      { this.regErr.email = '格式不正确'; e = true }
+      if (!this.registerForm.code) { this.regErr.code = '请输入验证码'; e = true }
+      if (e) return
+      this.registering = true
+      try {
+        if (this.uploadFile) {
+          const fd = new FormData(); fd.append('image', this.uploadFile); fd.append('path', 'avatar')
+          const res = await upload(fd)
+          if (res.success) { this.registerForm.avatar = res.data }
+          else { this.$myMessage({ content: res.msg || '头像上传失败', type: 'error' }); return }
         }
-      });
+        await this.$store.dispatch('register', this.registerForm)
+        this.$myMessage({ content: '注册成功，欢迎来到月之别邸', type: 'success', duration: 3000 })
+        this.registerForm = { account: '', nickname: '', email: '', code: '', password: '', avatar: '', sex: 0 }
+        this.uploadFile = null; this.avatarPreviewUrl = ''
+        this.isSending = false; clearInterval(this.timer)
+        window.history.length > 1 ? this.$router.go(-1) : this.$router.push('/')
+      } catch (err) {
+        if (err !== 'error') this.$myMessage({ content: err, type: 'error', duration: 3000 })
+      } finally { this.registering = false }
     }
   }
 }
 </script>
 
 <style scoped>
-
-/* 保持之前的全部样式不变 */
-#login {
-  width: 100%;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-family: 'Noto Serif SC', 'Playfair Display', serif;
-  position: relative;
+/* ── 页面 ── */
+.auth-root {
+  position: fixed;
+  top: 65px; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; justify-content: center;
   overflow: hidden;
-}
-.login-bg {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background-color: #fdfcf8;
-  background-image: radial-gradient(circle at 50% 30%, #fffaf5 0%, #f0ece5 100%);
-  z-index: 0;
-}
-
-/* 修改 4: 添加 transition 和基础宽度，移除固定 height */
-.scene {
-  width: 380px;
-  /* height 由内联样式控制 */
-  perspective: 1500px;
+  font-family: 'Noto Serif SC', Georgia, serif;
   z-index: 10;
-  transition: height 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* 增加弹性动效 */
 }
 
-.luna-card {
-  width: 100%;
-  height: 100%;
+/* 简约浅灰背景，带微纹 */
+.bg {
+  position: absolute; inset: 0;
+  background: #f0ede8;
+  background-image: radial-gradient(circle at 25% 35%, rgba(212,175,55,0.06) 0%, transparent 55%),
+  radial-gradient(circle at 75% 70%, rgba(212,175,55,0.05) 0%, transparent 50%);
+}
+
+/* ── 卡片翻转场景 ──
+   card-scene 提供 perspective
+   card 是翻转体，正背两面绝对叠放
+   尺寸固定：宽 420px，登录面高 380px，注册面高 580px
+   ★ 关键：两面都是同一个 .card，高度取较高的（注册面 580px），
+     登录面内容居中即可，这样翻转前后卡片大小完全一致
+*/
+.card-scene {
+  perspective: 1200px;
+}
+
+.card {
+  width: 420px;
+  height: 580px;
   position: relative;
   transform-style: preserve-3d;
-  transition: box-shadow 0.3s;
+  /* 翻转动画：0.7s，缓进缓出 */
+  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
 }
+
+/* 翻到背面 */
+.card.flipped {
+  transform: rotateY(180deg);
+}
+
+/* 正面 & 背面公共 */
 .card-face {
   position: absolute;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   backface-visibility: hidden;
-  border-radius: 8px;
-  background: #fffaf5;
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  box-shadow: 0 15px 35px rgba(212, 175, 55, 0.1), 0 5px 15px rgba(0,0,0,0.05);
+  -webkit-backface-visibility: hidden;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+
+/* 背面要预先旋转 180° */
+.card-back {
+  transform: rotateY(180deg);
+}
+
+/* 卡片内容容器 */
+.card-inner {
+  height: 100%;
+  padding: 36px 36px 28px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-.face-front { /* z-index 由内联样式控制 */ transform: rotateY(0deg); }
-.face-back { transform: rotateY(180deg); background: linear-gradient(to bottom, #fffaf5 0%, #fff5f7 100%); }
 
-.card-content {
-  padding: 30px 30px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+/* 登录内容垂直居中 */
+.card-front .card-inner {
+  justify-content: center;
+  gap: 0;
+}
+
+/* ── 卡片头部 ── */
+.card-head {
+  margin-bottom: 28px;
+}
+.card-sub   { font-size: 10px; letter-spacing: 4px; color: #bbb; margin: 0 0 6px; }
+.card-title { font-size: 26px; font-weight: 700; color: #1a1a1a; margin: 0; letter-spacing: 1px; }
+
+/* ── 浮动 label 字段 ── */
+.fl-wrap {
+  position: relative;
+  margin-bottom: 6px;
+}
+
+.fl-input {
+  width: 100%;
+  padding: 20px 0 6px;
+  background: transparent;
+  border: none; outline: none;
+  font-size: 14px; color: #1a1a1a;
+  font-family: inherit;
+  caret-color: #333;
   box-sizing: border-box;
 }
 
-.header-deco { display: flex; flex-direction: column; align-items: center; margin-bottom: 15px; color: #d4af37; }
-.moon-icon, .sakura-icon { font-size: 24px; margin-bottom: 5px; }
-.title-en { font-family: 'Playfair Display', serif; font-size: 12px; letter-spacing: 2px; opacity: 0.8; text-transform: uppercase; }
-.main-title { font-size: 24px; font-weight: 700; color: #4a4a4a; margin: 0 0 10px 0; letter-spacing: 1px; }
-.sub-title { font-size: 12px; color: #999; margin-bottom: 20px; font-weight: 300; }
-
-/* 修改 5: 移除 flex: 1，让内容紧凑，避免登录页按钮沉底 */
-.luna-form {
-  width: 100%;
-  /* flex: 1;  <-- 删除这行 */
-  margin-bottom: 20px; /* 增加底部间距 */
-}
-
-.input-wrapper { position: relative; width: 100%; margin-bottom: 5px; }
-.luna-input {
-  width: 100%; padding: 10px 0; font-family: 'Noto Serif SC', serif; font-size: 14px;
-  color: #4a4a4a; background: transparent; border: none; border-bottom: 1px solid #e0d0b0;
-  outline: none; transition: all 0.3s;
-}
-.luna-input::placeholder { color: #ccc; font-size: 13px; font-style: italic; }
-.focus-border { position: absolute; bottom: 0; left: 0; width: 0; height: 1px; background-color: #d4af37; transition: width 0.4s ease; }
-.luna-input:focus ~ .focus-border { width: 100%; }
-
-.verify-wrapper { position: relative; }
-.send-code-btn {
+/* label 默认在输入框中间（像 placeholder） */
+.fl-label {
   position: absolute;
-  right: 0;
-  bottom: 8px;
-  font-size: 12px;
-  color: #d4af37;
-  cursor: pointer;
-  z-index: 5;
-  transition: color 0.3s;
-  user-select: none;
+  left: 0;
+  top: 20px;
+  font-size: 14px;
+  color: #aaa;
+  pointer-events: none;
+  transform-origin: left top;
+  transition: transform 0.22s ease, color 0.22s ease, font-size 0.22s ease;
 }
-.send-code-btn:hover { color: #b8860b; font-weight: bold; }
-.send-code-btn.disabled { color: #ccc; cursor: not-allowed; }
 
-.actions { width: 100%; margin-top: 5px; }
-.luna-btn { width: 100%; padding: 12px 0; text-align: center; cursor: pointer; transition: all 0.3s; border-radius: 4px; font-size: 14px; font-weight: 700; letter-spacing: 2px; }
-.luna-btn.primary { background-color: #d4af37; color: #fff; box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3); }
-.luna-btn.primary:hover { background-color: #c5a028; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(212, 175, 55, 0.4); }
+/* 有内容或 focus 时，label 上浮 */
+.fl-input:focus   + .fl-label,
+.fl-input:not(:placeholder-shown) + .fl-label {
+  transform: translateY(-16px) scale(0.78);
+  color: #888;
+  font-size: 14px; /* scale 已缩小，保持声明统一 */
+}
 
-/* Footer Switch 保持沉底 */
-.footer-switch { margin-top: auto; padding-top: 15px; font-size: 12px; color: #888; display: flex; align-items: center; justify-content: center; }
-.switch-btn { color: #d4af37; margin-left: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s; border-bottom: 1px dashed transparent; }
-.switch-btn:hover { color: #b8860b; border-bottom-color: #b8860b; }
-::v-deep .el-form-item { margin-bottom: 20px; }
+/* focus 时 label 高亮 */
+.fl-wrap:focus-within .fl-label {
+  color: #333;
+}
+
+/* 底部线条 */
+.fl-bar {
+  height: 1px;
+  background: #e0e0e0;
+  transition: background 0.25s, height 0.2s;
+}
+.fl-wrap:focus-within .fl-bar {
+  background: #1a1a1a;
+  height: 1.5px;
+}
+
+/* 固定高度错误占位 */
+.fl-err {
+  height: 16px;
+  display: flex; align-items: center;
+}
+.fl-err span { font-size: 10px; color: #e74c3c; }
+
+/* 两列布局 */
+.col2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ── 提交按钮 ── */
+.main-btn {
+  width: 100%;
+  padding: 13px 0;
+  margin-top: 10px;
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px; font-weight: 600; letter-spacing: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  position: relative; overflow: hidden;
+  transition: background 0.25s, transform 0.15s;
+  flex-shrink: 0;
+}
+.main-btn:hover   { background: #333; }
+.main-btn:active  { transform: scale(0.98); }
+.main-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-arrow { font-style: normal; transition: transform 0.25s; }
+.main-btn:hover .btn-arrow { transform: translateX(4px); }
+
+/* ── 底部切换提示 ── */
+.switch-tip {
+  font-size: 12px; color: #aaa;
+  text-align: center; margin: 12px 0 0;
+  flex-shrink: 0;
+}
+.sw-link {
+  color: #555; cursor: pointer; font-weight: 600;
+  border-bottom: 1px solid #ccc;
+  transition: color 0.2s, border-color 0.2s;
+}
+.sw-link:hover { color: #111; border-color: #666; }
+
+/* ── 头像行 ── */
+.av-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 10px;
+  border: 1px dashed #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: border-color 0.2s, background 0.2s;
+  flex-shrink: 0;
+}
+.av-row:hover { border-color: #aaa; background: #fafafa; }
+.av-circle {
+  width: 44px; height: 44px; border-radius: 50%; overflow: hidden;
+  border: 1.5px solid #e0e0e0; position: relative; flex-shrink: 0;
+}
+.av-hover {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; opacity: 0; transition: opacity 0.2s;
+}
+.av-row:hover .av-hover { opacity: 1; }
+.av-main { font-size: 13px; color: #333; font-weight: 600; display: block; margin-bottom: 2px; }
+.av-sub  { font-size: 11px; color: #aaa; }
+
+/* ── 性别 ── */
+.sex-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px; flex-shrink: 0;
+}
+.sex-lbl { font-size: 11px; color: #aaa; margin-right: 4px; }
+.sex-chip {
+  padding: 4px 12px; font-size: 12px;
+  border: 1px solid #e0e0e0; background: transparent;
+  color: #666; border-radius: 20px; cursor: pointer;
+  font-family: inherit; transition: all 0.2s;
+}
+.sex-chip:hover { border-color: #999; color: #333; }
+.sex-chip.on    { background: #1a1a1a; border-color: #1a1a1a; color: #fff; font-weight: 600; }
+
+/* ── 验证码行 ── */
+.code-line {
+  position: relative;
+  display: flex; align-items: flex-end; gap: 6px;
+}
+.code-line .fl-input { flex: 1; }
+.code-line .fl-label { /* 继承 fl-label 样式，浮动正常工作 */ }
+.send-btn {
+  flex-shrink: 0;
+  padding: 4px 10px; margin-bottom: 7px;
+  font-size: 11px; font-weight: 600;
+  border: 1px solid #e0e0e0; background: transparent;
+  color: #666; cursor: pointer; border-radius: 4px;
+  font-family: inherit; white-space: nowrap;
+  transition: all 0.2s;
+}
+.send-btn:hover:not(.off) { border-color: #333; color: #333; }
+.send-btn.off { opacity: 0.35; cursor: not-allowed; }
+
+/* ── 图形验证码行 ── */
+.captcha-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.captcha-input-wrap {
+  flex: 1;
+}
+.captcha-img-wrap {
+  flex-shrink: 0;
+  width: 110px;
+  height: 40px;
+  margin-top: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.captcha-img-wrap:hover { border-color: #999; }
+.captcha-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.captcha-loading {
+  font-size: 11px;
+  color: #bbb;
+}
+
+/* 注册面内容紧凑些 */
+.card-inner-reg {
+  padding-top: 28px;
+  padding-bottom: 20px;
+  gap: 0;
+  justify-content: flex-start;
+}
+.card-inner-reg .card-head { margin-bottom: 16px; }
+.card-inner-reg .main-btn  { margin-top: 6px; }
+.card-inner-reg .switch-tip { margin-top: 8px; }
+
+/* el-form 覆盖 */
+::v-deep .el-form-item        { margin-bottom: 0; }
+::v-deep .el-form-item__error { display: none !important; }
+
+/* 裁剪弹窗 */
+.bili-cropper-layout { display: flex; height: 360px; gap: 30px; }
+.cropper-left  { flex: 1; display: flex; flex-direction: column; }
+.cropper-box-wrap { flex: 1; background: #f0f0f0; border: 1px solid #e7e7e7; border-radius: 4px; overflow: hidden; }
+.cropper-right { width: 160px; background: #f9f9f9; border-radius: 4px; padding: 20px;
+  display: flex; flex-direction: column; align-items: center; border: 1px solid #eee; }
+.preview-title { font-size: 14px; font-weight: 700; color: #333; margin: 0 0 16px; }
+.preview-item  { display: flex; flex-direction: column; align-items: center; margin-bottom: 16px; }
+.preview-circle-box { border-radius: 50%; overflow: hidden; border: 2px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.size-text { margin-top: 6px; font-size: 12px; color: #666; }
+</style>
+
+<style>
+.bili-cropper-dialog .el-dialog__body { padding: 20px 30px !important; }
 </style>

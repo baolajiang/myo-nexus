@@ -167,7 +167,7 @@ export default {
     fetchUserInfo() {
       // 这里的逻辑是：如果是看自己，优先用store里的最新数据；如果是看别人，走接口
       if (this.isMe) {
-        console.log("性别"+this.$store.state.sex);
+
         this.userInfo = {
           nickname: this.$store.state.account,
           avatar: this.$store.state.avatar,
