@@ -26,6 +26,7 @@ public class LoginInterceptor implements HandlerInterceptor {
     @Override
     //调用时间：Controller方法处理之前
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+
         if (HttpMethod.OPTIONS.toString().equals(request.getMethod())) {
             return true;
         }

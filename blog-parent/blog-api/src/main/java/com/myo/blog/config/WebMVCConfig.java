@@ -62,6 +62,8 @@ public class WebMVCConfig implements WebMvcConfigurer {
                 .addPathPatterns("/articles/publish")
                 .addPathPatterns("/articles/my")
                 .addPathPatterns("/admin/**")
+                .addPathPatterns("/categorys/**")
+                .addPathPatterns("/tags/**")
                 .addPathPatterns("/login/ticket");
 
         // 第三道：管理员权限拦截器，必须在 LoginInterceptor 之后注册

@@ -4,6 +4,7 @@ import com.myo.blog.dao.mapper.SysUserMapper;
 import com.myo.blog.dao.pojo.SysUser;
 import com.myo.blog.entity.ErrorCode;
 import com.myo.blog.entity.Result;
+import com.myo.blog.service.SysUserService;
 import com.myo.blog.utils.UserThreadLocal;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -23,7 +24,7 @@ import java.util.List;
 public class PermissionAspect {
 
     @Autowired
-    private SysUserMapper sysUserMapper; // 注入 Mapper，用于去数据库查用户的权限列表
+    private SysUserService sysUserService;
 
     /**
      * 定义切点 (Pointcut)
@@ -39,6 +40,7 @@ public class PermissionAspect {
     public Object around(ProceedingJoinPoint point, RequirePermission requirePermission) throws Throwable {
 
         SysUser sysUser = UserThreadLocal.get();
+
         if (sysUser == null) {
             return Result.fail(ErrorCode.NO_LOGIN.getCode(), "未登录");
         }
@@ -54,7 +56,7 @@ public class PermissionAspect {
         String requiredPermission = requirePermission.value();
 
         // 第四步：查钥匙
-        List<String> userPermissions = sysUserMapper.findPermissionsByUserId(sysUser.getId());
+        List<String> userPermissions = sysUserService.findPermissionsByUserId(sysUser.getId());
 
         // 第五步：比对
         if (userPermissions.contains(requiredPermission)) {

@@ -41,9 +41,18 @@ public class SysUserServiceImpl implements SysUserService {
     private LoginService loginService;
     @Autowired
     private UserTokenMapper userTokenMapper;
-
+    /**
+     * 根据用户ID查询用户的所有权限代码列表
+     * @param userId 用户ID
+     * @return 权限代码列表
+     */
     @Override
-    public UserVo findUserVoById(String id) { // Long -> String
+    public List<String> findPermissionsByUserId(String userId) {
+        if (userId == null) return null;
+        return sysUserMapper.findPermissionsByUserId(userId);
+    }
+    @Override
+    public UserVo findUserVoById(String id) { 
 
         if(id == null || "0".equals(id)){
             return new UserVo();
@@ -64,7 +73,7 @@ public class SysUserServiceImpl implements SysUserService {
     }
 
     @Override
-    public SysUser findUserById(String id) { // Long -> String
+    public SysUser findUserById(String id) { 
         SysUser sysUser = sysUserMapper.selectById(id);
         if (sysUser == null){
             sysUser = new SysUser();
@@ -206,7 +215,7 @@ public class SysUserServiceImpl implements SysUserService {
         return 0;
     }
 
-    private void updateRedisCache(String userId) { // Long -> String
+    private void updateRedisCache(String userId) { 
         String token = stringRedisTemplate.opsForValue().get("USER_TOKEN:" + userId);
         if (StringUtils.isNotBlank(token)) {
             SysUser newestUser = sysUserMapper.selectById(userId);
@@ -376,4 +385,5 @@ public class SysUserServiceImpl implements SysUserService {
         // 防止数据库里没有配level或者查出来是null的情况
         return level == null ? 99 : level;
     }
+
 }

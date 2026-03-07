@@ -102,7 +102,7 @@ public class ArticleServiceImpl implements ArticleService {
 
         // 2. 查询条件
         LambdaQueryWrapper<Article> queryWrapper = new LambdaQueryWrapper<>();
-        System.out.println("看看authorId："+authorId);
+
         queryWrapper.eq(Article::getAuthorId, authorId);
         // 按时间倒序
         queryWrapper.orderByDesc(Article::getCreateDate);
@@ -173,7 +173,7 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
-    public Result findArticleById(String articleId, String token) { // Long -> String
+    public Result findArticleById(String articleId, String token) { 
         Article article = this.articleMapper.selectById(articleId);
         if (article == null) {
             return Result.fail(404, "文章不存在");
@@ -375,7 +375,7 @@ public class ArticleServiceImpl implements ArticleService {
         return articleVo;
     }
 
-    private ArticleBodyVo findArticleBodyById(String bodyId) { // Long -> String
+    private ArticleBodyVo findArticleBodyById(String bodyId) { 
         ArticleBody articleBody = articleBodyMapper.selectById(bodyId);
         ArticleBodyVo articleBodyVo = new ArticleBodyVo();
         articleBodyVo.setContent(articleBody.getContent());

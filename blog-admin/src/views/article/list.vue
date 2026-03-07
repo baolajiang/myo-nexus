@@ -17,14 +17,20 @@
           <el-form-item label="关键字">
             <el-input
                 v-model="pageParams.keyword"
-                placeholder="搜索文章标题或简介(支持模糊查询)..."
+                placeholder="搜索文章标题或简介..."
                 clearable
                 @keyup.enter="handleSearch"
             />
           </el-form-item>
 
           <el-form-item label="分类">
-            <el-select v-model="pageParams.categoryId" placeholder="请选择分类" clearable style="width: 100%">
+            <el-select
+                v-model="pageParams.categoryId"
+                placeholder="请选择分类"
+                clearable
+                @change="handleCategoryChange"
+                style="width: 100%"
+            >
               <el-option
                   v-for="c in categoryList"
                   :key="c.id"
@@ -143,9 +149,9 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
 import { deleteArticle, getArticleList } from '../../api/article'
-// 请根据实际项目路径解开下面的注释并引入
-// import { getCategoryList } from '../../api/category'
-// import { getTagList } from '../../api/tag'
+// 引入写好的真实 API
+import { getCategoryList } from '../../api/category'
+import { getTagsByCategoryId } from '../../api/tag'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -187,15 +193,40 @@ const fetchData = async () => {
   }
 }
 
+// 页面初始化时，只请求分类数据
 const loadOptions = async () => {
-  // 模拟调用接口获取分类和标签
-  // try {
-  //   const catRes = await getCategoryList()
-  //   if(catRes.data.success) categoryList.value = catRes.data.data
-  //
-  //   const tagRes = await getTagList()
-  //   if(tagRes.data.success) tagList.value = tagRes.data.data
-  // } catch (e) { console.error(e) }
+  try {
+    const catRes = await getCategoryList()
+    if(catRes.data.success) {
+      categoryList.value = catRes.data.data
+    }
+  } catch (e) {
+    console.error('获取分类失败', e)
+  }
+}
+
+// 核心联动逻辑：当分类发生改变时，请求对应的标签
+const handleCategoryChange = async (categoryId: string) => {
+  // 分类变了，先把选中的标签重置为空
+  pageParams.tagId = ''
+
+  // 如果分类被清空了，把标签列表也清空，不再发请求
+  if (!categoryId) {
+    tagList.value = []
+    return
+  }
+
+  // 拿着新的 categoryId 去请求标签
+  try {
+    const res = await getTagsByCategoryId(categoryId)
+    if (res.data.success) {
+      tagList.value = res.data.data
+    } else {
+      ElMessage.error(res.data.msg || '获取标签失败')
+    }
+  } catch (e) {
+    console.error('获取标签失败', e)
+  }
 }
 
 const handleDateChange = (val: string[]) => {
@@ -221,6 +252,7 @@ const resetSearch = () => {
   pageParams.startDate = ''
   pageParams.endDate = ''
   dateRange.value = []
+  tagList.value = [] // 重置时顺便清空联动的标签列表
   pageParams.page = 1
   fetchData()
   dialogVisible.value = false

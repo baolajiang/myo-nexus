@@ -1,15 +1,14 @@
 package com.myo.blog.controller;
 
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.myo.blog.common.aop.RequirePermission;
+import com.myo.blog.dao.pojo.Category;
 import com.myo.blog.exception.BusinessException;
 import com.myo.blog.exception.ParamException;
 import com.myo.blog.service.CategoryService;
 import com.myo.blog.entity.Result;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 
 // ... existing code ...
@@ -51,5 +50,22 @@ public class CategoryController {
         } catch (Exception e) {
             throw new BusinessException(500, "获取分类详情失败");
         }
+    }
+
+    @PostMapping
+    @RequirePermission("category:add")
+    public Result addCategory(@RequestBody Category category) {
+        return categoryService.addCategory(category);
+    }
+    @PutMapping
+    @RequirePermission("category:edit")
+    public Result updateCategory(@RequestBody Category category) {
+
+        return categoryService.updateCategory(category);
+    }
+    @DeleteMapping("/{id}")
+    @RequirePermission("category:delete")
+    public Result deleteCategory(@PathVariable("id") String id) {
+        return categoryService.deleteCategory(id);
     }
 }

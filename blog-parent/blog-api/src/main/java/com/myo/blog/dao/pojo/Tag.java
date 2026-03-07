@@ -14,4 +14,6 @@ public class Tag {
 
     private String tagName;
 
+    private String categoryId;//分类id
+
 }

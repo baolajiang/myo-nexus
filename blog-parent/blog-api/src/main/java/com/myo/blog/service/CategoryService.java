@@ -8,16 +8,28 @@ import java.util.List;
 
 public interface CategoryService {
 
-    CategoryVo findCategoryById(String categoryId); // Long -> String
+    CategoryVo findCategoryById(String categoryId); 
 
     Result findAll();
 
     Result findAllDetail();
 
-    Result categoryDetailById(String id); // Long -> String
+    Result categoryDetailById(String id); 
 
     /**
      * 批量查询分类
      */
-    List<Category> findCategoryByIds(Collection<String> ids); // Long -> String
+    List<Category> findCategoryByIds(Collection<String> ids);
+    /**
+     * 添加分类
+     */
+    Result addCategory(Category category);
+    /**
+     * 更新分类
+     */
+    Result updateCategory(Category category);
+    /**
+     * 删除分类
+     */
+    Result deleteCategory(String id);
 }

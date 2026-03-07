@@ -25,6 +25,8 @@ public interface SysUserService {
     SysUser findUser(String account, String password);
 
     SysUser findIpaddr(String account, String password);
+
+    List<String> findPermissionsByUserId(String userId);
     /**
      * 根据token查询用户信息
      * @param token

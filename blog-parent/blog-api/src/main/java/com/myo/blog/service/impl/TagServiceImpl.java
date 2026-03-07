@@ -78,4 +78,44 @@ public class TagServiceImpl implements TagService {
         return Result.success(copy(tag));
     }
 
+    @Override
+
+    public Result findTagsByCategoryId(String categoryId) {
+        LambdaQueryWrapper<Tag> queryWrapper = new LambdaQueryWrapper<>();
+        // 匹配对应的 category_id
+        queryWrapper.eq(Tag::getCategoryId, categoryId);
+        List<Tag> tags = this.tagMapper.selectList(queryWrapper);
+        // 使用自带的 copyList 方法转换为 TagVo 列表并返回
+        return Result.success(copyList(tags));
+    }
+    /**
+     * 添加标签
+     * @param tag
+     * @return
+     */
+    @Override
+    public Result addTag(Tag tag) {
+        this.tagMapper.insert(tag);
+        return Result.success(null);
+    }
+    /**
+     * 更新标签
+     * @param tag
+     * @return
+     */
+    @Override
+    public Result updateTag(Tag tag) {
+        this.tagMapper.updateById(tag);
+        return Result.success(null);
+    }
+    /**
+     * 删除标签
+     * @param id
+     * @return
+     */
+    @Override
+    public Result deleteTag(String id) {
+        int i=this.tagMapper.deleteById(id);
+        return Result.success(null);
+    }
 }

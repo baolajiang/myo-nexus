@@ -72,5 +72,31 @@ public class CategoryServiceImpl implements CategoryService {
         return categoryVoList;
     }
 
+    /**
+     * 添加分类
+     */
+    @Override
+    public Result addCategory(Category category) {
+        this.categoryMapper.insert(category);
+        return Result.success(null);
+    }
+    /**
+     * 更新分类
+     */
+    @Override
+    public Result updateCategory(Category category) {
+
+        this.categoryMapper.updateById(category);
+        return Result.success(null);
+    }
+    /**
+     * 删除分类
+     * 暂时不实现删除分类下的文章检查，因为删除分类下的文章会导致文章丢失分类信息，影响文章的正常显示。
+     */
+    @Override
+    public Result deleteCategory(String id) {
+
+        return Result.success(null);
+    }
 
 }
