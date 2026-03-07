@@ -423,7 +423,7 @@ public class ArticleServiceImpl implements ArticleService {
         articleMapper.selectPage(page, queryWrapper);
 
         // 4. 转换 VO (复用 copyList，填充作者和分类信息)
-        // 后台列表通常不需要显示 Tag (太占位置)，但需要 Author 和 Category
+        // 【注意】：后台列表通常不需要显示 Tag (太占位置)，但需要 Author 和 Category
         List<ArticleVo> articleVoList = copyList(page.getRecords(), false, true, false, true, true);
 
         // 5. 封装结果

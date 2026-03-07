@@ -1,6 +1,7 @@
 package com.myo.blog.dao.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.myo.blog.dao.pojo.SysUser;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -46,4 +47,7 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
 
     // 查询当前用户拥有的最小 level 值（官阶最大）
     Integer getHighestRoleLevel(@Param("userId") String userId);
+
+    // 查询用户列表，根据当前用户的 level 进行权限过滤
+    Page<SysUser> selectUserListWithLevelCheck(Page<SysUser> page, @Param("currentUserId") String currentUserId, @Param("currentUserLevel") Integer currentUserLevel);
 }

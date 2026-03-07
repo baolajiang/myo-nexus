@@ -162,13 +162,13 @@ const isEditMode = ref(false) // 是否处于编辑模式
 // 表单数据
 const editForm = reactive({
   id: '',
-  account: '',
-  nickname: '',
-  email: '',
-  mobilePhoneNumber: '',
-  avatar: '',
-  lastIpaddr: '',
-  status: '0'
+  account: '',// 账号
+  nickname: '',// 昵称
+  email: '',// 邮箱
+  mobilePhoneNumber: '',// 手机号
+  avatar: '',// 头像
+  lastIpaddr: '', // 最近登录IP
+  status: '0'// 状态
 })
 
 // 备份数据（用于取消编辑时恢复）

@@ -14,6 +14,7 @@ import com.myo.blog.entity.ErrorCode;
 import com.myo.blog.entity.LoginUserVo;
 import com.myo.blog.entity.Result;
 import com.myo.blog.entity.UserVo;
+import com.myo.blog.utils.UserThreadLocal;
 import org.springframework.context.annotation.Lazy;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -174,7 +175,7 @@ public class SysUserServiceImpl implements SysUserService {
             hasUpdate = true;
         }
         if (StringUtils.isNotBlank(userParam.getAvatar())) {
-            System.out.println("头像是："+userParam.getAvatar());
+
             updateWrapper.set(SysUser::getAvatar, userParam.getAvatar());
             hasUpdate = true;
         }
@@ -249,11 +250,20 @@ public class SysUserServiceImpl implements SysUserService {
      */
     @Override
     public Result UserList(PageParams pageParams) {
-        Page<SysUser> page = new Page<>(pageParams.getPage(), pageParams.getPageSize());
-        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.orderByDesc(SysUser::getCreateDate);
+        // 获取当前登录用户
+        SysUser currentUser = UserThreadLocal.get();
+        if (currentUser == null) {
+            return Result.fail(ErrorCode.TOKEN_ERROR.getCode(), "未获取到当前登录状态");
+        }
 
-        Page<SysUser> sysUserPage = sysUserMapper.selectPage(page, queryWrapper);
+        String currentUserId = currentUser.getId();
+        // 获取当前用户的最高官阶（level值越小官阶越大，默认99）
+        Integer currentUserLevel = getHighestRoleLevel(currentUserId);
+
+        Page<SysUser> page = new Page<>(pageParams.getPage(), pageParams.getPageSize());
+
+        // 直接调用 xml 中自定义的分页 SQL
+        Page<SysUser> sysUserPage = sysUserMapper.selectUserListWithLevelCheck(page, currentUserId, currentUserLevel);
         List<SysUser> records = sysUserPage.getRecords();
 
         if (records.isEmpty()) {
@@ -261,12 +271,12 @@ public class SysUserServiceImpl implements SysUserService {
         }
 
         for (SysUser u : records) {
-            u.setPassword(null);
-            u.setSalt(null);
+            // 因为在 XML 查询时已经排除了 password 和 salt，这里无需过滤
             String key = "USER_TOKEN:" + u.getId();
             Boolean isOnline = stringRedisTemplate.hasKey(key);
             u.setOnline(isOnline);
         }
+
         return Result.success(sysUserPage);
     }
 
@@ -334,8 +344,8 @@ public class SysUserServiceImpl implements SysUserService {
         stringRedisTemplate.delete("USER_STATUS:" + userId);
         stringRedisTemplate.delete("USER_INFO:" + userId);
         stringRedisTemplate.delete("ONLINE_USER:" + userId);
-        stringRedisTemplate.delete("USER_PERMISSIONS:" + userId);
-
+        Boolean isDeleted = stringRedisTemplate.delete("USER_PERMISSIONS:" + userId);
+        System.out.println("删除用户权限缓存结果: " + isDeleted);
         System.out.println("用户 " + userId + " 被强制踢下线，删除所有相关缓存");
     }
     // 判断用户是否拥有某个特定权限

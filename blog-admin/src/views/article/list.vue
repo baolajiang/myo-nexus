@@ -3,14 +3,74 @@
     <el-card class="list-card">
       <div class="header-action">
         <h2>文章列表</h2>
-        <div class="search-box">
-          <el-button type="primary" icon="Plus" @click="$router.push('/article/write')">写文章</el-button>
+        <div>
+          <el-button type="primary" icon="Search" @click="dialogVisible = true">查询文章</el-button>
         </div>
       </div>
 
+      <el-dialog
+          v-model="dialogVisible"
+          title="查询文章"
+          width="500px"
+      >
+        <el-form :model="pageParams" label-width="80px">
+          <el-form-item label="关键字">
+            <el-input
+                v-model="pageParams.keyword"
+                placeholder="搜索文章标题或简介(支持模糊查询)..."
+                clearable
+                @keyup.enter="handleSearch"
+            />
+          </el-form-item>
+
+          <el-form-item label="分类">
+            <el-select v-model="pageParams.categoryId" placeholder="请选择分类" clearable style="width: 100%">
+              <el-option
+                  v-for="c in categoryList"
+                  :key="c.id"
+                  :label="c.categoryName"
+                  :value="c.id"
+              />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="标签">
+            <el-select v-model="pageParams.tagId" placeholder="请选择标签" clearable style="width: 100%">
+              <el-option
+                  v-for="t in tagList"
+                  :key="t.id"
+                  :label="t.tagName"
+                  :value="t.id"
+              />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="发布时间">
+            <el-date-picker
+                v-model="dateRange"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                value-format="YYYY-MM-DD"
+                @change="handleDateChange"
+                clearable
+                style="width: 100%"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="resetSearch">重 置</el-button>
+            <el-button type="primary" @click="handleSearch">查 询</el-button>
+          </span>
+        </template>
+      </el-dialog>
+
       <el-table
           :data="articleList"
-          style="width: 100%; margin-top: 20px"
+          style="width: 100%; margin-top: 10px"
+          height="calc(100vh - 250px)"
           v-loading="loading"
           border
       >
@@ -22,7 +82,11 @@
                 :preview-src-list="[scope.row.cover]"
                 fit="cover"
                 preview-teleported
-            />
+            >
+              <template #error>
+                <div class="image-slot">无图</div>
+              </template>
+            </el-image>
           </template>
         </el-table-column>
 
@@ -53,7 +117,7 @@
 
         <el-table-column prop="createDate" label="发布时间" width="180" align="center" />
 
-        <el-table-column label="操作" width="180" fixed="right" align="center">
+        <el-table-column label="操作" width="160" fixed="right" align="center">
           <template #default="scope">
             <el-button type="primary" link icon="Edit" @click="handleEdit(scope.row.id)">编辑</el-button>
             <el-button type="danger" link icon="Delete" @click="handleDelete(scope.row.id)">删除</el-button>
@@ -68,8 +132,8 @@
             :page-sizes="[10, 20, 50]"
             layout="total, sizes, prev, pager, next, jumper"
             :total="total"
-            @size-change="fetchData"
-            @current-change="fetchData"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
         />
       </div>
     </el-card>
@@ -78,7 +142,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
-import {deleteArticle, getArticleList} from '../../api/article'
+import { deleteArticle, getArticleList } from '../../api/article'
+// 请根据实际项目路径解开下面的注释并引入
+// import { getCategoryList } from '../../api/category'
+// import { getTagList } from '../../api/tag'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -87,13 +154,22 @@ const loading = ref(false)
 const articleList = ref([])
 const total = ref(0)
 
-// 分页参数
+const dialogVisible = ref(false)
+const dateRange = ref([])
+
+const categoryList = ref<any[]>([])
+const tagList = ref<any[]>([])
+
 const pageParams = reactive({
   page: 1,
-  pageSize: 10
+  pageSize: 10,
+  keyword: '',
+  categoryId: '',
+  tagId: '',
+  startDate: '',
+  endDate: ''
 })
 
-// 获取数据
 const fetchData = async () => {
   loading.value = true
   try {
@@ -111,12 +187,60 @@ const fetchData = async () => {
   }
 }
 
-// 编辑文章
-const handleEdit = (id: string) => {
-  router.push(`/article/write?id=${id}`) // 跳转到写文章页面并带上ID
+const loadOptions = async () => {
+  // 模拟调用接口获取分类和标签
+  // try {
+  //   const catRes = await getCategoryList()
+  //   if(catRes.data.success) categoryList.value = catRes.data.data
+  //
+  //   const tagRes = await getTagList()
+  //   if(tagRes.data.success) tagList.value = tagRes.data.data
+  // } catch (e) { console.error(e) }
 }
 
-// 删除文章
+const handleDateChange = (val: string[]) => {
+  if (val && val.length === 2) {
+    pageParams.startDate = val[0]
+    pageParams.endDate = val[1]
+  } else {
+    pageParams.startDate = ''
+    pageParams.endDate = ''
+  }
+}
+
+const handleSearch = () => {
+  pageParams.page = 1
+  fetchData()
+  dialogVisible.value = false
+}
+
+const resetSearch = () => {
+  pageParams.keyword = ''
+  pageParams.categoryId = ''
+  pageParams.tagId = ''
+  pageParams.startDate = ''
+  pageParams.endDate = ''
+  dateRange.value = []
+  pageParams.page = 1
+  fetchData()
+  dialogVisible.value = false
+}
+
+const handleSizeChange = (size: number) => {
+  pageParams.pageSize = size
+  pageParams.page = 1
+  fetchData()
+}
+
+const handleCurrentChange = (page: number) => {
+  pageParams.page = page
+  fetchData()
+}
+
+const handleEdit = (id: string) => {
+  router.push(`/article/write?id=${id}`)
+}
+
 const handleDelete = (id: string) => {
   ElMessageBox.confirm(
       '确定要删除这篇文章吗？删除后无法恢复',
@@ -127,14 +251,14 @@ const handleDelete = (id: string) => {
         type: 'warning',
       }
   ).then(async () => {
-    // 这里调用删除接口
-     await deleteArticle(id)
-    ElMessage.success('演示模式：删除成功')
+    await deleteArticle(id)
+    ElMessage.success('删除成功')
     fetchData()
   })
 }
 
 onMounted(() => {
+  loadOptions()
   fetchData()
 })
 </script>
@@ -142,20 +266,44 @@ onMounted(() => {
 <style scoped>
 .list-container {
   padding: 20px;
+  height: 100%;
+  box-sizing: border-box;
+}
+.list-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+:deep(.el-card__body) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 10px;
 }
 .header-action {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
 }
 .pagination-container {
-  margin-top: 20px;
+  margin-top: 15px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
 }
 .text-gray {
   color: #999;
+  font-size: 12px;
+}
+.image-slot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  background: #f5f7fa;
+  color: #909399;
   font-size: 12px;
 }
 </style>

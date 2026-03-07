@@ -116,7 +116,7 @@ const route = useRoute()
 
 <style scoped>
 .el-menu-vertical-demo {
-  height: 100vh;
+  height: 100%;
   border-right: none;
   overflow-y: auto; /* 允許垂直滾動 */
   overflow-x: hidden; /* 禁止水平滾動 */

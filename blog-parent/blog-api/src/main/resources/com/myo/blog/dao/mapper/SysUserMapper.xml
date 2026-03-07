@@ -31,4 +31,20 @@
         WHERE ur.user_id = #{userId}
     </select>
 
+
+    <select id="selectUserListWithLevelCheck" resultType="com.myo.blog.dao.pojo.SysUser">
+        SELECT u.id, u.account, u.avatar, u.create_date, u.deleted, u.email,
+               u.last_login, u.mobile_phone_number, u.nickname, u.status,
+               u.ipaddr, u.last_ipaddr, u.sex
+        FROM myo_sys_user u
+        WHERE u.id != #{currentUserId}
+          AND IFNULL(
+            (SELECT MIN(r.role_level)
+            FROM myo_sys_role r
+            JOIN myo_sys_user_role ur ON r.id = ur.role_id
+            WHERE ur.user_id = u.id), 99
+            ) > #{currentUserLevel}
+        ORDER BY u.create_date DESC
+    </select>
+
 </mapper>
