@@ -7,6 +7,7 @@ import com.myo.blog.dao.pojo.IpBlacklist;
 import com.myo.blog.entity.ErrorCode;
 import com.myo.blog.entity.Result;
 import com.myo.blog.utils.IpUtils;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -23,13 +24,12 @@ import java.io.PrintWriter;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class IpBlackListInterceptor implements HandlerInterceptor {
 
-    @Autowired
-    private RedisTemplate<String, String> redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
-    @Autowired
-    private IpBlacklistMapper ipBlacklistMapper;
+    private final IpBlacklistMapper ipBlacklistMapper;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {

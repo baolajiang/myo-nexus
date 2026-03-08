@@ -7,6 +7,7 @@ import com.myo.blog.entity.ErrorCode;
 import com.myo.blog.entity.Result;
 import com.myo.blog.utils.UserThreadLocal;
 import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
@@ -19,10 +20,10 @@ import java.util.List;
 
 // 管理员拦截器
 @Component
+@RequiredArgsConstructor
 public class AdminInterceptor implements HandlerInterceptor {
     // 2. 注入 SysUserMapper
-    @Autowired
-    private SysUserMapper sysUserMapper;
+    private final SysUserMapper sysUserMapper;
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) throws Exception {
         if (!(handler instanceof HandlerMethod)) {

@@ -7,6 +7,7 @@ import com.myo.blog.exception.BusinessException;
 import com.myo.blog.exception.ParamException;
 import com.myo.blog.service.CategoryService;
 import com.myo.blog.entity.Result;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,10 +15,10 @@ import org.springframework.web.bind.annotation.*;
 // ... existing code ...
 @RestController
 @RequestMapping("categorys")
+@RequiredArgsConstructor
 public class CategoryController {
 
-    @Autowired
-    private CategoryService categoryService;
+    private final CategoryService categoryService;
 
     // /categorys
     @GetMapping

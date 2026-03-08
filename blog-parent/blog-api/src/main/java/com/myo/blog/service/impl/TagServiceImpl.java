@@ -1,11 +1,15 @@
 package com.myo.blog.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.myo.blog.dao.mapper.ArticleMapper;
+import com.myo.blog.dao.mapper.ArticleTagMapper;
 import com.myo.blog.dao.mapper.TagMapper;
+import com.myo.blog.dao.pojo.ArticleTag;
 import com.myo.blog.dao.pojo.Tag;
 import com.myo.blog.service.TagService;
 import com.myo.blog.entity.Result;
 import com.myo.blog.entity.TagVo;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,9 +20,12 @@ import java.util.Collections;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class TagServiceImpl implements TagService {
-    @Autowired
-    private TagMapper tagMapper;
+
+    private final TagMapper tagMapper;
+
+    private final ArticleTagMapper articleTagMapper;
 
     public TagVo copy(Tag tag){
         TagVo tagVo = new TagVo();
@@ -115,7 +122,16 @@ public class TagServiceImpl implements TagService {
      */
     @Override
     public Result deleteTag(String id) {
-        int i=this.tagMapper.deleteById(id);
+        // 去文章标签关联表查一下 count
+        LambdaQueryWrapper<ArticleTag> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ArticleTag::getTagId, id);
+        Long count = articleTagMapper.selectCount(wrapper);
+
+        if (count > 0) {
+            return Result.fail(400, "有文章正在使用该标签，无法删除！");
+        }
+
+        this.tagMapper.deleteById(id);
         return Result.success(null);
     }
 }

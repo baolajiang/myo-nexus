@@ -17,6 +17,7 @@ import com.myo.blog.utils.ArticleUtils;
 import com.myo.blog.utils.JWTUtils;
 import com.myo.blog.utils.UserThreadLocal;
 import io.lettuce.core.ScriptOutputType;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -30,30 +31,26 @@ import java.net.SocketException;
 import java.util.*;
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ArticleServiceImpl implements ArticleService {
 
-    @Autowired
-    private ArticleMapper articleMapper;
-    @Autowired
-    private TagService tagService;
-    @Autowired
-    private SysUserService sysUserService;
-    @Autowired
-    private ArticleBodyMapper articleBodyMapper;
-    @Autowired
-    private CategoryService categoryService;
-    @Autowired
-    private ThreadService threadService;
-    @Autowired
-    private ArticleTagMapper articleTagMapper;
-    @Autowired
-    private RabbitTemplate rabbitTemplate; // 注入 RabbitTemplate
+
+    private final ArticleMapper articleMapper;
+    private final TagService tagService;
+    private final SysUserService sysUserService;
+    private final ArticleBodyMapper articleBodyMapper;
+
+    private final CategoryService categoryService;
+    private final ThreadService threadService;
+    private final ArticleTagMapper articleTagMapper;
+
+    private final RabbitTemplate rabbitTemplate; // 注入 RabbitTemplate
     // 直接注入 Mapper 以便進行批量查詢 (Batch Query)
     // 這是為了在 copyList 方法中解決 N+1 問題，直接用 ID 列表查出資料
-    @Autowired
-    private SysUserMapper sysUserMapper;
-    @Autowired
-    private CategoryMapper categoryMapper;
+
+    private final SysUserMapper sysUserMapper;
+
+    private final CategoryMapper categoryMapper;
 
     @Override
     public Result listArticle(PageParams pageParams, String token) {

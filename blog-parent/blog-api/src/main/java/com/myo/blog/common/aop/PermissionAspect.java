@@ -6,6 +6,7 @@ import com.myo.blog.entity.ErrorCode;
 import com.myo.blog.entity.Result;
 import com.myo.blog.service.SysUserService;
 import com.myo.blog.utils.UserThreadLocal;
+import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -21,10 +22,11 @@ import java.util.List;
  */
 @Aspect     // 1. 声明这是一个切面类
 @Component  // 2. 将该类交给 Spring 容器管理（实例化为 Bean）
+@RequiredArgsConstructor
 public class PermissionAspect {
 
-    @Autowired
-    private SysUserService sysUserService;
+
+    private final SysUserService sysUserService;
 
     /**
      * 定义切点 (Pointcut)

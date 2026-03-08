@@ -12,6 +12,7 @@ import com.myo.blog.entity.params.PageParams;
 import com.myo.blog.entity.params.UserParam;
 import com.myo.blog.service.ArticleService;
 import com.myo.blog.service.SysUserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -20,18 +21,17 @@ import java.util.List;
 // 管理员接口
 @RestController
 @RequestMapping("admin")
+@RequiredArgsConstructor
 public class AdminController {
 
-    @Autowired
-    private RedisTemplate<String, String> redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
-    @Autowired
-    private IpBlacklistMapper ipBlacklistMapper;
-    @Autowired
-    private ArticleService articleService;
 
-    @Autowired
-    private SysUserService sysUserService;
+    private final IpBlacklistMapper ipBlacklistMapper;
+
+    private final ArticleService articleService;
+
+    private final SysUserService sysUserService;
 
     /**
      * 1. 手动封禁 IP

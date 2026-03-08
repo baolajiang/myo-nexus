@@ -7,6 +7,7 @@ import com.myo.blog.service.MessageService;
 import com.myo.blog.utils.IpUtils;
 import com.myo.blog.utils.QRcodeUtils;
 import eu.bitwalker.useragentutils.UserAgent;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -18,9 +19,9 @@ import java.io.IOException;
 @Slf4j
 @RestController
 @RequestMapping("utils")
+@RequiredArgsConstructor
 public class UtilController {
-    @Autowired
-    private MessageService messageService;
+    private final MessageService messageService;
 
     //获取访问设备
     @GetMapping("getUserAgent")

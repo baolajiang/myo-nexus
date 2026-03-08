@@ -8,6 +8,7 @@ import com.myo.blog.entity.Result;
 import com.myo.blog.service.MailService; // 引入邮件服务
 import com.myo.blog.utils.HttpContextUtils;
 import com.myo.blog.utils.IpUtils;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -35,18 +36,16 @@ import java.util.concurrent.TimeUnit;
  * 3. 可以自定义提示信息
  * 4. 可以自定义管理员邮箱（默认发送给配置的发件人）
  */
+@RequiredArgsConstructor
 public class RateLimitAspect {
 
-    @Autowired
-    private RedisTemplate<String, String> redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
     // 注入邮件服务
-    @Autowired
-    private MailService mailService;
+    private final MailService mailService;
 
     // 注入 IP 黑名单映射器
-    @Autowired
-    private IpBlacklistMapper ipBlacklistMapper;
+    private final IpBlacklistMapper ipBlacklistMapper;
 
     // 读取管理员邮箱（这里默认发给自己，也可以配置其他邮箱）
     @Value("${spring.mail.username}")

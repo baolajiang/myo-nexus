@@ -7,6 +7,7 @@ import com.myo.blog.entity.params.LoginParam;
 import com.myo.blog.utils.IpUtils;
 import com.myo.blog.utils.HttpContextUtils;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,14 +17,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("register")
 /**
  * 注册控制器
  */
 public class RegisterController {
 
-    @Autowired
-    private LoginService loginService;
+    private final LoginService loginService;
 
     // 1分钟1次，防止邮件轰炸
     @RateLimit(time = 60, count = 1, msg = "验证码发送太频繁，请稍后再试")

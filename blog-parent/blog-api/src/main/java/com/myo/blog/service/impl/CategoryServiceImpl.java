@@ -1,11 +1,16 @@
 package com.myo.blog.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.myo.blog.dao.mapper.ArticleMapper;
 import com.myo.blog.dao.mapper.CategoryMapper;
+import com.myo.blog.dao.mapper.TagMapper;
+import com.myo.blog.dao.pojo.Article;
 import com.myo.blog.dao.pojo.Category;
+import com.myo.blog.dao.pojo.Tag;
 import com.myo.blog.service.CategoryService;
 import com.myo.blog.entity.CategoryVo;
 import com.myo.blog.entity.Result;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,10 +20,15 @@ import java.util.ArrayList;
 
 
 @Service
+@RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
 
-    @Autowired
-    private CategoryMapper categoryMapper;
+
+    private final CategoryMapper categoryMapper;
+
+    private final ArticleMapper articleMapper;
+
+    private final TagMapper tagMapper;
 
     @Override
     public CategoryVo findCategoryById(String categoryId) {
@@ -91,12 +101,33 @@ public class CategoryServiceImpl implements CategoryService {
     }
     /**
      * 删除分类
-     * 暂时不实现删除分类下的文章检查，因为删除分类下的文章会导致文章丢失分类信息，影响文章的正常显示。
+     *
      */
+
     @Override
     public Result deleteCategory(String id) {
+        // 1. 检查是否有【文章】正在使用该分类
+        LambdaQueryWrapper<Article> articleWrapper = new LambdaQueryWrapper<>();
+        articleWrapper.eq(Article::getCategoryId, id);
+        Long articleCount = articleMapper.selectCount(articleWrapper);
+        if (articleCount > 0) {
+            // 返回错误提示给前端
+            return Result.fail(400, "该分类下存在 " + articleCount + " 篇文章，请先转移或删除文章！");
+        }
+
+        // 2. 检查是否有【标签】归属于该分类
+        LambdaQueryWrapper<Tag> tagWrapper = new LambdaQueryWrapper<>();
+        tagWrapper.eq(Tag::getCategoryId, id);
+        Long tagCount = tagMapper.selectCount(tagWrapper);
+        if (tagCount > 0) {
+            return Result.fail(400, "该分类下还存在 " + tagCount + " 个标签，请先删除下属标签！");
+        }
+
+        // 3. 经过上面两道关卡，说明这个分类是个“空壳”，可以安全删除
+        this.categoryMapper.deleteById(id);
 
         return Result.success(null);
     }
+
 
 }

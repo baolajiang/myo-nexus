@@ -10,6 +10,7 @@ import com.myo.blog.entity.params.LoginParam;
 import com.myo.blog.utils.IpUtils;
 import com.myo.blog.utils.HttpContextUtils;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -22,15 +23,14 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @RestController
 @RequestMapping("login")
+@RequiredArgsConstructor
 public class LoginController {
 
-    @Autowired
-    private LoginService loginService;
-    @Autowired
-    private StringRedisTemplate redisTemplate;
+    private final LoginService loginService;
+
+    private final StringRedisTemplate redisTemplate;
     // 注入 SysUserMapper 用于查询权限
-    @Autowired
-    private SysUserMapper sysUserMapper;
+    private final SysUserMapper sysUserMapper;
 
     // 防止暴力破解，1分钟限制5次
     @RateLimit(time = 60, count = 5, msg = "账号或密码错误次数过多，请1分钟后再试")

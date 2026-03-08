@@ -3,6 +3,7 @@ package com.myo.blog.config;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.myo.blog.dao.mapper.IpBlacklistMapper;
 import com.myo.blog.dao.pojo.IpBlacklist;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -13,6 +14,7 @@ import java.util.List;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 /**
  * 项目启动时执行：将 MySQL 数据库中的黑名单同步到 Redis 缓存中
  * 功能：在项目启动时，从数据库加载所有 IP 黑名单，并将其同步到 Redis 缓存中
@@ -21,11 +23,9 @@ import java.util.List;
  */
 public class IpBlacklistRunner implements CommandLineRunner {
 
-    @Autowired
-    private IpBlacklistMapper ipBlacklistMapper;
+    private final IpBlacklistMapper ipBlacklistMapper;
 
-    @Autowired
-    private RedisTemplate<String, String> redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
     // 定义标记 Key，用来判断 Redis 是否重启过
     public static final String BLACKLIST_MARKER_KEY = "BAN:IS_LOADED";

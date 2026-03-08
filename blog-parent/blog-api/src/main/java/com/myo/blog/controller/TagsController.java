@@ -4,14 +4,16 @@ import com.myo.blog.common.aop.RequirePermission;
 import com.myo.blog.dao.pojo.Tag;
 import com.myo.blog.service.TagService;
 import com.myo.blog.entity.Result;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("tags")
 public class TagsController {
-    @Autowired
-    private TagService tagService;
+
+    private final TagService tagService;
 
     //   /tags/hot
     @GetMapping("hot")

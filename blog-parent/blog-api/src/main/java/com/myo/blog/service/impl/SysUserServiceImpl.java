@@ -15,6 +15,7 @@ import com.myo.blog.entity.LoginUserVo;
 import com.myo.blog.entity.Result;
 import com.myo.blog.entity.UserVo;
 import com.myo.blog.utils.UserThreadLocal;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Lazy;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -30,17 +31,18 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class SysUserServiceImpl implements SysUserService {
 
-    @Autowired
-    private SysUserMapper sysUserMapper;
-    @Autowired
-    private StringRedisTemplate stringRedisTemplate;
-    @Autowired
+    private final SysUserMapper sysUserMapper;
+
+    private final StringRedisTemplate stringRedisTemplate;
+
     @Lazy
-    private LoginService loginService;
     @Autowired
-    private UserTokenMapper userTokenMapper;
+    private LoginService loginService;
+
+    private final UserTokenMapper userTokenMapper;
     /**
      * 根据用户ID查询用户的所有权限代码列表
      * @param userId 用户ID

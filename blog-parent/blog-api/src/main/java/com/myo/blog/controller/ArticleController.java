@@ -9,6 +9,7 @@ import com.myo.blog.entity.Result;
 import com.myo.blog.entity.params.ArticleParam;
 import com.myo.blog.entity.params.PageParams;
 import com.myo.blog.utils.UserThreadLocal;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpRequest;
 import org.springframework.web.bind.annotation.*;
@@ -19,10 +20,10 @@ import jakarta.servlet.http.HttpServletRequest;
 //json数据进行交互
 @RestController
 @RequestMapping("articles")
+@RequiredArgsConstructor
 public class ArticleController {
 
-    @Autowired
-    private ArticleService articleService;
+    private final ArticleService articleService;
     /**
      * 首页 文章列表
      * @param pageParams

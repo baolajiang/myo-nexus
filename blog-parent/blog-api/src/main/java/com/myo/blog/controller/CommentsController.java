@@ -10,6 +10,7 @@ import com.myo.blog.utils.HttpContextUtils;
 import eu.bitwalker.useragentutils.Browser;
 import eu.bitwalker.useragentutils.UserAgent;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -18,9 +19,9 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin
 @RestController
 @RequestMapping("comments")
+@RequiredArgsConstructor
 public class CommentsController {
-    @Autowired
-    private CommentsService commentsService;
+    private final CommentsService commentsService;
 
     // 查询文章下的评论列表
     @GetMapping("article/{id}")

@@ -12,6 +12,7 @@ import com.myo.blog.entity.CategoryVo;
 import com.myo.blog.entity.LinkVo;
 import com.myo.blog.entity.Result;
 import com.myo.blog.service.LinkService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,9 +27,10 @@ import java.util.List;
  * @create 2023/7/29 15:08
  */
 @Service
+@RequiredArgsConstructor
 public class LinkServiceImpl implements LinkService {
-    @Autowired
-    private LinkMapper LinkMapper;
+
+    private final LinkMapper LinkMapper;
 
     @Override
     public Result findAll() {

@@ -2,6 +2,7 @@ package com.myo.blog.ai.tools;
 
 import com.myo.blog.dao.pojo.SysUser;
 import com.myo.blog.utils.UserThreadLocal;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
@@ -20,10 +21,11 @@ import java.util.*;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class DatabaseAiTools {
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+
+    private final JdbcTemplate jdbcTemplate;
 
     private static final Map<String, String> TABLE_PERMISSION_MAP = new HashMap<>();
 

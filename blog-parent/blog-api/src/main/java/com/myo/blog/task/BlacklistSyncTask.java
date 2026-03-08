@@ -1,6 +1,7 @@
 package com.myo.blog.task;
 
 import com.myo.blog.config.IpBlacklistRunner;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -16,14 +17,13 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @EnableScheduling
+@RequiredArgsConstructor
 public class BlacklistSyncTask {
 
-    @Autowired
-    private RedisTemplate<String, String> redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
     // 注入启动加载器，用于执行“从数据库恢复数据”的操作
-    @Autowired
-    private IpBlacklistRunner ipBlacklistRunner;
+    private final IpBlacklistRunner ipBlacklistRunner;
 
     /**
      * 定时巡检任务

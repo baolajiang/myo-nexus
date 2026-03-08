@@ -15,6 +15,7 @@ import com.myo.blog.utils.JWTUtils;
 import com.myo.blog.entity.ErrorCode;
 import com.myo.blog.entity.Result;
 import com.myo.blog.entity.params.LoginParam;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -33,26 +34,22 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class LoginServiceImpl implements LoginService {
 
-    @Autowired
-    private SysUserService sysUserService;
+    private final SysUserService sysUserService;
 
-    @Autowired
-    private RedisTemplate<String,String> redisTemplate;
-    @Autowired
-    private SysUserMapper sysUserMapper;
+    private final RedisTemplate<String,String> redisTemplate;
+    private final SysUserMapper sysUserMapper;
 
     // 注入邮件发送器
-    @Autowired
-    private JavaMailSender mailSender;
+    private final JavaMailSender mailSender;
     // 注入邮件服务类
-    @Autowired
-    private MailService mailService;
+    private final MailService mailService;
 
     // === 注入 UserTokenMapper ===
-    @Autowired
-    private UserTokenMapper userTokenMapper;
+
+    private final UserTokenMapper userTokenMapper;
 
     // 从配置文件读取发件人，防止硬编码
     @Value("${spring.mail.username}")

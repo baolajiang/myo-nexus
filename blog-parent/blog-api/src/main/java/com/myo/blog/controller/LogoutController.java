@@ -6,6 +6,7 @@ import com.myo.blog.utils.IpUtils;
 import com.myo.blog.utils.HttpContextUtils;
 import com.myo.blog.dao.pojo.SysUser;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -13,13 +14,13 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @RestController
 @RequestMapping("logout")
+@RequiredArgsConstructor
 /**
  * 退出登录控制器
  */
 public class LogoutController {
 
-    @Autowired
-    private LoginService loginService;
+    private final LoginService loginService;
 
     @GetMapping
     public Result logout(@RequestHeader("Authorization") String token){

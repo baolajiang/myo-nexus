@@ -6,6 +6,7 @@ import com.myo.blog.service.LoginService;
 import com.myo.blog.utils.UserThreadLocal;
 import com.myo.blog.entity.ErrorCode;
 import com.myo.blog.entity.Result;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,13 +17,13 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
+@RequiredArgsConstructor
 @Component
 @Slf4j
 //日志拦截
 public class LoginInterceptor implements HandlerInterceptor {
-    @Autowired
-    private LoginService loginService;
+
+    private final LoginService loginService;
     @Override
     //调用时间：Controller方法处理之前
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {

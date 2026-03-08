@@ -3,6 +3,7 @@ package com.myo.blog.config;
 import com.myo.blog.handler.AdminInterceptor;
 import com.myo.blog.handler.IpBlackListInterceptor;
 import com.myo.blog.handler.LoginInterceptor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -18,20 +19,18 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  *
  */
 @Configuration
+@RequiredArgsConstructor
 public class WebMVCConfig implements WebMvcConfigurer {
 
-    @Autowired
-    private LoginInterceptor loginInterceptor;
+    private final LoginInterceptor loginInterceptor;
 
-    @Autowired
-    private IpBlackListInterceptor ipBlackListInterceptor;
+    private final IpBlackListInterceptor ipBlackListInterceptor;
 
     /**
      * AdminInterceptor 负责校验管理员权限，
      * 必须在 LoginInterceptor 之后注册，保证 UserThreadLocal 中已有当前用户信息
      */
-    @Autowired
-    private AdminInterceptor adminInterceptor;
+    private final AdminInterceptor adminInterceptor;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {

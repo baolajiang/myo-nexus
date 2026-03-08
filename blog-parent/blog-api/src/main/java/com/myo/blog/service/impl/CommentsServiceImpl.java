@@ -17,6 +17,7 @@ import com.myo.blog.entity.CommentVo;
 import com.myo.blog.entity.Result;
 import com.myo.blog.entity.UserVo;
 import com.myo.blog.entity.params.CommentParam;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections.CollectionUtils;
 import org.joda.time.DateTime;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -33,18 +34,19 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class CommentsServiceImpl implements CommentsService {
-    @Autowired
-    private CommentMapper commentMapper;
-    @Autowired
-    private SysUserService sysUserService;
 
-    @Autowired
-    private RabbitTemplate rabbitTemplate;
-    @Autowired
-    private ArticleMapper articleMapper;
-    @Autowired
-    private ThreadService threadService;
+    private final CommentMapper commentMapper;
+
+    private final SysUserService sysUserService;
+
+
+    private final RabbitTemplate rabbitTemplate;
+
+    private final ArticleMapper articleMapper;
+
+    private final ThreadService threadService;
 
     @Override
     public Result commentsByArticleId(String id) {

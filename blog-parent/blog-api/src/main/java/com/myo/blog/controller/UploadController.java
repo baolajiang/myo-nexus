@@ -5,6 +5,7 @@ import com.myo.blog.dao.mapper.ArticleMapper;
 
 import com.myo.blog.entity.Result;
 import com.myo.blog.utils.R2UploadService;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,10 +18,12 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.UUID;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("upload")
 public class UploadController {
-    @Autowired
-    private R2UploadService r2UploadService;
+    private final R2UploadService r2UploadService;
+
+    private final ArticleMapper articleMapper;
 
     @Value("${r2.domain}")
     private String r2Domain;
@@ -37,8 +40,7 @@ public class UploadController {
             return Result.fail(20001, "上传失败: " + e.getMessage());
         }
     }
-    @Autowired
-    private ArticleMapper articleMapper;
+
     // 通用上传限制 1分钟10次
     @RateLimit(time = 60, count = 10, msg = "上传过于频繁")
     @PostMapping("file")

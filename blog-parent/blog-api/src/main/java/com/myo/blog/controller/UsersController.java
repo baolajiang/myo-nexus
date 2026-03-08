@@ -6,6 +6,7 @@ import com.myo.blog.entity.params.UserParam;
 import com.myo.blog.utils.IpUtils;
 import com.myo.blog.utils.HttpContextUtils;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -13,13 +14,13 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("users")
 public class UsersController {
 
-    @Autowired
-    private SysUserService sysUserService;
-    @Autowired
-    private RedisTemplate<String, String> redisTemplate; // 注入 Redis
+    private final SysUserService sysUserService;
+
+    private final RedisTemplate<String, String> redisTemplate; // 注入 Redis
 
     //根据token查询当前用户信息
     @GetMapping("currentUser")

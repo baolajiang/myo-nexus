@@ -15,6 +15,7 @@ import com.myo.blog.entity.params.MessageParam;
 import com.myo.blog.service.MessageService;
 import com.myo.blog.service.SysUserService;
 import com.myo.blog.utils.UserThreadLocal;
+import lombok.RequiredArgsConstructor;
 import org.joda.time.DateTime;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,11 +31,12 @@ import java.util.List;
  * @create 2023/8/8 16:00
  */
 @Service
+@RequiredArgsConstructor
 public class MessageServiceImpl implements MessageService {
-    @Autowired
-    private MessageMapper messageMapper;
-    @Autowired
-    private SysUserService sysUserService;
+
+    private final MessageMapper messageMapper;
+
+    private final SysUserService sysUserService;
 
 
     public Result message(MessageParam messageParam) {

@@ -1,6 +1,7 @@
 package com.myo.blog.utils;
 
 import com.myo.blog.config.BlogProperties;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @date 2024/11/13 10:20
  */
 @Component
+@RequiredArgsConstructor
 public class SerialGenerator {
 
     private static Long MACHINE_ID= 1L;
@@ -22,8 +24,7 @@ public class SerialGenerator {
     private static final int MIN_RANDOM = 1;
     private static final int MAX_RANDOM = 99;
 
-    @Autowired
-    private BlogProperties blogProperties;
+    private final BlogProperties blogProperties;
 
     private static final AtomicLong atomicSeq = new AtomicLong(1);
 
