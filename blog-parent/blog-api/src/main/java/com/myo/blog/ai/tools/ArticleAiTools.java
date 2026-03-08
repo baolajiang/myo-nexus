@@ -15,7 +15,7 @@ public class ArticleAiTools {
 
     // 注入 ArticleService
      private final ArticleService articleService;
-    // ... 构造方法
+    // 构造方法
     public ArticleAiTools(ArticleService articleService) {
         this.articleService = articleService;
     }
