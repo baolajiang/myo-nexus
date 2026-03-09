@@ -17,6 +17,7 @@ public class PageParams {
 
     private String month;
 
+    private String keyword;// 搜索关键词
 
     public String getMonth(){
         if (this.month != null && this.month.length() == 1){

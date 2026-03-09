@@ -46,7 +46,7 @@ public class ArticleServiceImpl implements ArticleService {
     private final CategoryService categoryService;
     private final ThreadService threadService;
     private final ArticleTagMapper articleTagMapper;
-
+    private final CommentMapper commentMapper;
     private final RabbitTemplate rabbitTemplate; // 注入 RabbitTemplate
     // 直接注入 Mapper 以便進行批量查詢 (Batch Query)
     // 這是為了在 copyList 方法中解決 N+1 問題，直接用 ID 列表查出資料
@@ -259,6 +259,81 @@ public class ArticleServiceImpl implements ArticleService {
         }
     }
 
+    @Override
+    @Transactional
+    public Result updateArticle(ArticleParam articleParam) {
+        String articleId = articleParam.getId();
+        if (StringUtils.isBlank(articleId)) {
+            return Result.fail(400, "文章ID不能为空");
+        }
+
+        // 1. 获取当前登录用户
+        SysUser sysUser = UserThreadLocal.get();
+
+        // 2. 构造唯一的 Redis Key，防止频繁点击更新导致数据混乱
+        String lockKey = "LOCK:ARTICLE:UPDATE:" + sysUser.getId() + ":" + articleId;
+        Boolean locked = stringRedisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", 5, TimeUnit.SECONDS);
+
+        if (Boolean.FALSE.equals(locked)) {
+            return Result.fail(400, "操作太快啦，正在为您更新中，请勿频繁点击！");
+        }
+
+        try {
+            // 3. 更新文章主表基本信息
+            Article article = new Article();
+            article.setId(articleId);
+            article.setTitle(articleParam.getTitle());
+            article.setSummary(articleParam.getSummary());
+            article.setCategoryId(articleParam.getCategory().getId());
+            article.setCover(articleParam.getCover());
+            this.articleMapper.updateById(article);
+
+            // 4. 处理标签关联 (先删后插)
+            // 先清理旧标签
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ArticleTag> tagDeleteWrapper = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+            tagDeleteWrapper.eq(ArticleTag::getArticleId, articleId);
+            this.articleTagMapper.delete(tagDeleteWrapper);
+
+            // 再插入新标签
+            List<TagVo> tags = articleParam.getTags();
+            if (tags != null && !tags.isEmpty()) {
+                for (TagVo tag : tags) {
+                    ArticleTag articleTag = new ArticleTag();
+                    articleTag.setArticleId(articleId);
+                    articleTag.setTagId(tag.getId());
+                    this.articleTagMapper.insert(articleTag);
+                }
+            }
+
+            // 5. 更新文章内容表
+            ArticleBody articleBody = new ArticleBody();
+            articleBody.setContent(articleParam.getBody().getContent());
+            articleBody.setContentHtml(articleParam.getBody().getContentHtml());
+
+            com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<ArticleBody> updateBodyWrapper = new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+            updateBodyWrapper.eq(ArticleBody::getArticleId, articleId);
+            this.articleBodyMapper.update(articleBody, updateBodyWrapper);
+
+            // 6. 发送 MQ 消息清理缓存
+            // 文章更新了，必须把列表和详情的缓存清掉。路由键写 article.update 同样可以被你之前配置的 article.# 规则监听到
+            try {
+                rabbitTemplate.convertAndSend(RabbitConfig.BLOG_EXCHANGE, "article.update", articleId);
+                log.info("【MQ消息发送成功】文章更新，ID: {}", articleId);
+            } catch (org.springframework.amqp.AmqpException e) {
+                log.error("【MQ消息发送失败】MQ服务可能异常，但不影响文章更新。文章ID: {}", articleId, e);
+            }
+
+            // 7. 返回结果
+            Map<String, String> map = new HashMap<>();
+            map.put("id", articleId);
+            return Result.success(map);
+
+        } finally {
+            // 解除分布式锁
+            stringRedisTemplate.delete(lockKey);
+        }
+    }
+
     private List<ArticleVo> copyList(List<Article> records, boolean isTag, boolean isAuthor) {
         List<ArticleVo> articleVoList = new ArrayList<>();
         for (Article record : records) {
@@ -361,6 +436,9 @@ public class ArticleServiceImpl implements ArticleService {
         return articleVoList;
     }
 
+
+
+
     private ArticleVo copy(Article article, boolean isTag, boolean isAuthor, boolean isBody,boolean isCategory){
         ArticleVo articleVo = new ArticleVo();
         BeanUtils.copyProperties(article,articleVo);
@@ -444,5 +522,54 @@ public class ArticleServiceImpl implements ArticleService {
         result.put("total", page.getTotal());
 
         return Result.success(result);
+    }
+
+    @Override
+    @Transactional
+    public Result deleteArticle(String id) {
+        // 1. 获取当前登录用户（管理员）
+        SysUser sysUser = UserThreadLocal.get();
+
+        // 2. 构造防重 Redis Key，精确到用户ID和文章ID
+        String lockKey = "LOCK:ARTICLE:DELETE:" + sysUser.getId() + ":" + id;
+        Boolean locked = stringRedisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", 5, TimeUnit.SECONDS);
+
+        if (Boolean.FALSE.equals(locked)) {
+            return Result.fail(400, "操作太快啦，正在处理中，请勿频繁点击！");
+        }
+
+        try {
+            // 3. 删除文章主表
+            this.articleMapper.deleteById(id);
+
+            // 4. 删除文章内容表
+            LambdaQueryWrapper<ArticleBody> bodyQuery = new LambdaQueryWrapper<>();
+            bodyQuery.eq(ArticleBody::getArticleId, id);
+            this.articleBodyMapper.delete(bodyQuery);
+
+            // 5. 删除文章标签关联表
+            LambdaQueryWrapper<ArticleTag> tagQuery = new LambdaQueryWrapper<>();
+            tagQuery.eq(ArticleTag::getArticleId, id);
+            this.articleTagMapper.delete(tagQuery);
+
+            // 6. 删除文章相关的评论
+            LambdaQueryWrapper<Comment> commentQuery = new LambdaQueryWrapper<>();
+            commentQuery.eq(Comment::getArticleId, id);
+            this.commentMapper.delete(commentQuery);
+
+            // 7. 发送 MQ 消息清理缓存
+            try {
+                rabbitTemplate.convertAndSend(RabbitConfig.BLOG_EXCHANGE, "article.delete", id);
+                log.info("【MQ】缓存清理消息发送成功，文章及相关数据已删除，ID: {}", id);
+            } catch (AmqpException e) {
+                log.error("【MQ】消息发送失败，MQ 服务可能异常，但不影响删除。文章ID: {}", id, e);
+            }
+
+            return Result.success("删除成功");
+
+        } finally {
+            // 8. 解除分布式锁
+            stringRedisTemplate.delete(lockKey);
+        }
     }
 }

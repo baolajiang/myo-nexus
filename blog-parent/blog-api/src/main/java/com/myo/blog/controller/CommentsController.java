@@ -70,7 +70,7 @@ public class CommentsController {
         log.debug("查询评论数量 - IP: {}, 文章ID: {}", ip, id);
 
         try {
-            Result result = commentsService.commentsByArticleId(id);
+            Result result = commentsService.queryCommentCount(id);
             log.debug("评论数量查询成功 - IP: {}, 文章ID: {}", ip, id);
             return result;
         } catch (Exception e) {

@@ -139,7 +139,7 @@
     data() {
       return {
         article: {
-		count:0,
+		      count:0,
           id: '',
           title: '',
           commentCounts: 0,
@@ -265,17 +265,21 @@
           that.comment.article.id = that.article.id
           let parms = {articleId:that.article.id,content:that.comment.content}
           publishComment(parms,this.$store.state.token).then(data => {
+
             if(data.success){
+
               that.$myMessage({
                 type: 'success', content: '评论成功', showClose: true
               })
               that.comment.content = ''
               that. getCommentsByArticle()//刷新评论区
+              that.article.count=that.article.count+1
             }else{
                  that.$myMessage({type: 'error', content: data.msg, showClose: true})
             }
 
           }).catch(error => {
+
             if (error !== 'error') {
               that.$myMessage({type: 'error', content: error, showClose: true})
             }

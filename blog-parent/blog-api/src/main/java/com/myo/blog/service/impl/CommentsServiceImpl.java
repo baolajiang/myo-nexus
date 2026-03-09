@@ -9,6 +9,7 @@ import com.myo.blog.dao.mapper.CommentMapper;
 import com.myo.blog.dao.pojo.Comment;
 import com.myo.blog.dao.pojo.SysUser;
 import com.myo.blog.dao.pojo.Tag;
+import com.myo.blog.entity.params.PageParams;
 import com.myo.blog.service.CommentsService;
 import com.myo.blog.service.SysUserService;
 import com.myo.blog.service.ThreadService;
@@ -31,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -105,9 +107,96 @@ public class CommentsServiceImpl implements CommentsService {
      * @param id 文章ID
      * @return 评论数量
      */
-    public Result queryCommentCount(int id) {
-        Integer count = commentMapper.queryCommentCount(id);
+    @Override
+    public Result queryCommentCount(String id) {
+        LambdaQueryWrapper<Comment> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Comment::getArticleId, id);
+        // 直接执行 select count(*) from myo_comment where article_id = ?
+        Long count = commentMapper.selectCount(queryWrapper);
         return Result.success(count);
+    }
+
+    @Override
+    public Result listComment(PageParams pageParams) {
+        // 1. 分页参数
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Comment> page =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageParams.getPage(), pageParams.getPageSize());
+        LambdaQueryWrapper<Comment> queryWrapper = new LambdaQueryWrapper<>();
+
+        // 2. 关键词模糊搜索
+        if (StringUtils.isNotBlank(pageParams.getKeyword())) {
+            queryWrapper.like(Comment::getContent, pageParams.getKeyword());
+        }
+
+        // 3. 按时间倒序
+        queryWrapper.orderByDesc(Comment::getCreateDate);
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Comment> commentPage =
+                commentMapper.selectPage(page, queryWrapper);
+
+        // 4. 转换为后台专用的 VO
+        List<CommentVo> commentVoList = new ArrayList<>();
+        for (Comment comment : commentPage.getRecords()) {
+            commentVoList.add(copyAdmin(comment));
+        }
+
+        // 5. 组装前端需要的 list 和 total
+        java.util.Map<String, Object> map = new java.util.HashMap<>();
+        map.put("list", commentVoList);
+        map.put("total", commentPage.getTotal());
+
+        return Result.success(map);
+    }
+
+    @Override
+    @Transactional
+    public Result deleteComment(String id) {
+        Comment comment = commentMapper.selectById(id);
+        if (comment == null) {
+            return Result.fail(400, "评论不存在");
+        }
+        String articleId = comment.getArticleId();
+
+        // 1. 删除当前评论
+        commentMapper.deleteById(id);
+
+        // 2. 删除它底下的所有子评论 (通过 parentId)
+        LambdaQueryWrapper<Comment> childQuery = new LambdaQueryWrapper<>();
+        childQuery.eq(Comment::getParentId, id);
+        commentMapper.delete(childQuery);
+
+        // 3. 异步更新文章的评论总数
+        threadService.updateArticleCommentCount(articleMapper, articleId);
+
+        return Result.success("删除成功");
+    }
+
+    // 这是专门给后台用的转换方法，只查作者、被回复人、文章标题，不查树状子节点
+    // 前端显示 :评论者 评论内容 所属文章 发布时间
+    private CommentVo copyAdmin(Comment comment) {
+        CommentVo commentVo = new CommentVo();
+        BeanUtils.copyProperties(comment, commentVo);
+        commentVo.setId(String.valueOf(comment.getId()));
+
+        // 查询评论作者信息
+        UserVo userVo = this.sysUserService.findUserVoById(comment.getAuthorId());
+        commentVo.setAuthor(userVo);
+
+        // 如果是回复，查询被回复人信息
+        if (comment.getLevel() > 1) {
+            UserVo toUserVo = this.sysUserService.findUserVoById(comment.getToUid());
+            commentVo.setToUser(toUserVo);
+        }
+
+        // 格式化时间
+        commentVo.setCreateDate(new DateTime(comment.getCreateDate()).toString("yyyy-MM-dd HH:mm"));
+
+        // 查询所属文章标题
+        com.myo.blog.dao.pojo.Article article = articleMapper.selectById(comment.getArticleId());
+        if (article != null) {
+            commentVo.setArticleTitle(article.getTitle());
+        }
+
+        return commentVo;
     }
 
     private List<CommentVo> copyList(List<Comment> comments) {

@@ -40,6 +40,8 @@ public class SysUser {
 
     private String LastIpaddr;
 
+    private String remark;// 备注
+
     @TableField(exist = false) // 表示数据库表里没有这一列
     private Boolean online;
 

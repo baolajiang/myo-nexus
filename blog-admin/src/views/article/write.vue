@@ -22,32 +22,51 @@
         <el-form-item label="文章封面" prop="cover">
           <el-upload
               class="cover-uploader"
+              v-loading="coverLoading"
+              element-loading-text="封面上传中..."
               action="/api/upload"
               :headers="tokenHeader"
               :show-file-list="false"
               :on-success="handleCoverSuccess"
+              :on-error="handleCoverError"
               :before-upload="beforeCoverUpload"
           >
-            <img v-if="form.cover" :src="form.cover" class="cover-img" />
+            <el-image
+                v-if="form.cover"
+                :src="form.cover"
+                class="cover-img"
+                fit="cover"
+            >
+              <template #placeholder>
+                <div class="image-loading-slot">
+                  <el-icon class="is-loading"><Loading /></el-icon>
+                  <span>图片加载中...</span>
+                </div>
+              </template>
+            </el-image>
             <el-icon v-else class="cover-uploader-icon"><Plus /></el-icon>
           </el-upload>
           <div class="tips">点击上传封面 (建议尺寸 16:9)</div>
         </el-form-item>
 
         <el-form-item label="文章内容" prop="body.content">
-          <el-input
+          <MdEditor
               v-model="form.body.content"
-              type="textarea"
-              :rows="15"
-              placeholder="请输入 Markdown 内容..."
-              class="markdown-input"
+              @onUploadImg="onUploadImg"
+              @onChange="onChangeContent"
+              style="height: 600px; width: 100%;"
           />
         </el-form-item>
 
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="分类" prop="category">
-              <el-select v-model="form.category.id" placeholder="请选择分类" style="width: 100%">
+              <el-select
+                  v-model="form.category.id"
+                  placeholder="请选择分类"
+                  style="width: 100%"
+                  @change="(val: string) => handleCategoryChange(val, false)"
+              >
                 <el-option
                     v-for="item in categories"
                     :key="item.id"
@@ -90,22 +109,24 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Loading } from '@element-plus/icons-vue'
 import request from '../../utils/request'
-import { getArticleDetail } from '../../api/article'
+import { publishArticle, updateArticle, getArticleById } from '../../api/article'
+import { getTagsByCategoryId } from '../../api/tag'
 
-// 路由
+import { MdEditor } from 'md-editor-v3'
+import 'md-editor-v3/lib/style.css'
+
 const route = useRoute()
 const router = useRouter()
 
-// 状态
 const isEdit = ref(false)
 const publishing = ref(false)
+const coverLoading = ref(false)
 const formRef = ref()
-const categories = ref([]) // 需调用API获取
-const tags = ref([])       // 需调用API获取
+const categories = ref<any[]>([])
+const tags = ref<any[]>([])
 
-// 表单数据
 const form = reactive({
   id: '',
   title: '',
@@ -115,57 +136,44 @@ const form = reactive({
   tags: [] as any[],
   body: {
     content: '',
-    contentHtml: '' // 简单处理，如果用 MD编辑器通常会生成 HTML
+    contentHtml: ''
   }
 })
 
-// 辅助变量：用于 el-select 多选标签，因为 form.tags 结构是对象数组 [{id:1}, {id:2}]
-// 需要一个纯 ID 数组 [1, 2] 来绑定 select
 const selectedTagIds = computed({
   get: () => form.tags.map(t => t.id),
   set: (val) => {
-    // 当 select 变化时，把 ID 数组转回对象数组
     form.tags = val.map(id => ({ id }))
   }
 })
 
-// 校验规则
 const rules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
   'body.content': [{ required: true, message: '请输入内容', trigger: 'blur' }],
   'category.id': [{ required: true, message: '请选择分类', trigger: 'change' }]
 }
 
-// 上传 Header
 const tokenHeader = { Authorization: localStorage.getItem('token') }
 
-// --- 生命周期 ---
 onMounted(async () => {
-  // 1. 获取所有分类和标签 (需要实现这两个接口)
   fetchCategories()
-  fetchTags()
 
-  // 2. 检查是否有 ID 参数 (编辑模式)
   const id = route.query.id as string
   if (id) {
     isEdit.value = true
     await loadArticleData(id)
+
+    if (form.category && form.category.id) {
+      await handleCategoryChange(form.category.id, true)
+    }
   }
 })
 
-// --- 方法 ---
-
-// 加载文章详情
 const loadArticleData = async (id: string) => {
   try {
-    // 复用已有的 findArticleById 接口
-    // 注意：后台通常用 /admin/article/{id}，如果复用前台接口也可以，只要权限够
-    // 这里假设在 api/article.ts 里封装了 getArticleDetail(id)
-    const res = await request.post(`/articles/view/${id}`)
+    const res = await getArticleById(id)
     if (res.data.success) {
       const data = res.data.data
-
-      // 数据回显
       form.id = data.id
       form.title = data.title
       form.summary = data.summary
@@ -176,63 +184,118 @@ const loadArticleData = async (id: string) => {
     }
   } catch (error) {
     console.error(error)
-    ElMessage.error('加载文章失败')
+    ElMessage.error('加载文章详情失败')
   }
 }
 
-// 提交表单
-const handleSubmit = async () => {
-  if (!formRef.value) return
+const handleCategoryChange = async (categoryId: string, isInit = false) => {
+  if (!isInit) {
+    form.tags = []
+  }
+  if (!categoryId) {
+    tags.value = []
+    return
+  }
 
-  await formRef.value.validate(async (valid: boolean) => {
-    if (valid) {
-      publishing.value = true
-      try {
-        // 简单处理 contentHtml (实际应由 MD 编辑器生成)
-        form.body.contentHtml = form.body.content
-
-        // 调用发布接口 (后端已修改为支持更新)
-        const res = await request.post('/articles/publish', form)
-
-        if (res.data.success) {
-          ElMessage.success(isEdit.value ? '更新成功' : '发布成功')
-          router.push('/article/list')
-        } else {
-          ElMessage.error(res.data.msg || '操作失败')
-        }
-      } catch (e) {
-        console.error(e)
-      } finally {
-        publishing.value = false
-      }
+  try {
+    const res = await getTagsByCategoryId(categoryId)
+    if (res.data.success) {
+      tags.value = res.data.data
     }
-  })
+  } catch (error) {
+    console.error('获取该分类下的标签失败:', error)
+  }
 }
 
-// 上传相关
+const onChangeContent = (_val: string, html: string) => {
+  form.body.contentHtml = html
+}
+
+const onUploadImg = async (files: File[], callback: (urls: string[]) => void) => {
+  const resUrls = await Promise.all(
+      files.map(async (file) => {
+        const formData = new FormData()
+        formData.append('image', file)
+
+        try {
+          const res = await request.post('/upload', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          })
+          if (res.data.success) {
+            return res.data.data
+          } else {
+            ElMessage.error(res.data.msg || '图片上传失败')
+            return ''
+          }
+        } catch (e) {
+          ElMessage.error('图片上传异常')
+          return ''
+        }
+      })
+  )
+  callback(resUrls.filter(url => url !== ''))
+}
+
+const handleSubmit = async () => {
+  if (publishing.value || !formRef.value) return
+
+  publishing.value = true
+
+  try {
+    await formRef.value.validate()
+
+    let res;
+    if (isEdit.value) {
+      res = await updateArticle(form)
+    } else {
+      res = await publishArticle(form)
+    }
+
+    if (res.data.success) {
+      ElMessage.success(isEdit.value ? '更新成功' : '发布成功')
+      router.push('/article/list')
+    } else {
+      ElMessage.error(res.data.msg || '操作失败')
+      publishing.value = false
+    }
+  } catch (e) {
+    console.error('表单校验未通过或请求异常:', e)
+    publishing.value = false
+  }
+}
+
 const handleCoverSuccess = (res: any) => {
+  coverLoading.value = false
   if(res.success) {
     form.cover = res.data
   } else {
     ElMessage.error('上传失败')
   }
 }
+
+const handleCoverError = () => {
+  coverLoading.value = false
+  ElMessage.error('网络或接口异常')
+}
+
 const beforeCoverUpload = (file: any) => {
   const isImg = file.type.startsWith('image/')
   const isLt2M = file.size / 1024 / 1024 < 5
   if (!isImg) ElMessage.error('只能上传图片!')
   if (!isLt2M) ElMessage.error('图片大小不能超过 5MB!')
-  return isImg && isLt2M
+
+  if (isImg && isLt2M) {
+    coverLoading.value = true
+    return true
+  }
+  return false
 }
 
-// 模拟获取分类标签 (请替换为真实接口)
 const fetchCategories = async () => {
-  const res = await request.get('/categorys') // 假设
+  const res = await request.get('/categorys')
   if(res.data.success) categories.value = res.data.data
-}
-const fetchTags = async () => {
-  const res = await request.get('/tags') // 假设
-  if(res.data.success) tags.value = res.data.data
 }
 
 </script>
@@ -275,8 +338,20 @@ const fetchTags = async () => {
   color: #999;
   margin-top: 5px;
 }
-.markdown-input :deep(.el-textarea__inner) {
-  font-family: Consolas, "Courier New", monospace;
-  line-height: 1.5;
+
+.image-loading-slot {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  background: #f5f7fa;
+  color: #909399;
+  font-size: 12px;
+}
+.image-loading-slot .el-icon {
+  font-size: 20px;
+  margin-bottom: 5px;
 }
 </style>

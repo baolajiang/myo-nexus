@@ -2,6 +2,7 @@ package com.myo.blog.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.myo.blog.common.aop.LogAnnotation;
 import com.myo.blog.common.aop.RequirePermission;
 import com.myo.blog.dao.mapper.IpBlacklistMapper;
 import com.myo.blog.dao.pojo.IpBlacklist;
@@ -11,6 +12,7 @@ import com.myo.blog.entity.Result;
 import com.myo.blog.entity.params.PageParams;
 import com.myo.blog.entity.params.UserParam;
 import com.myo.blog.service.ArticleService;
+import com.myo.blog.service.CommentsService;
 import com.myo.blog.service.SysUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,7 @@ public class AdminController {
 
     private final SysUserService sysUserService;
 
+    private final CommentsService commentsService;
     /**
      * 1. 手动封禁 IP
      */
@@ -116,6 +119,8 @@ public class AdminController {
      * 更新用户信息 (用于编辑功能，可修改昵称、邮箱、手机号、状态等)
      */
     @PostMapping("user/update")
+    @RequirePermission("user:edit")
+    @LogAnnotation(module = "用戶管理", operator = "編輯用戶資料")
     public Result updateUser(@RequestBody UserParam userParam) {
         // 复用 Service 层已有的 updateUser 方法
         // 该方法会处理基本信息更新，如果状态改为封禁(99)还会自动踢下线
@@ -134,7 +139,25 @@ public class AdminController {
     }
 
 
+    /**
+     * 删除文章
+     */
+    @PostMapping("article/delete/{id}")
+    @RequirePermission("article:delete")
+    public Result deleteArticle(@PathVariable("id") String id) {
+        return articleService.deleteArticle(id);
+    }
 
+    @PostMapping("comment/list")
+    @RequirePermission("comment:list")
+    public Result listComment(@RequestBody PageParams pageParams) {
+        return commentsService.listComment(pageParams);
+    }
 
+    @PostMapping("comment/delete/{id}")
+    @RequirePermission("comment:delete")
+    public Result deleteComment(@PathVariable("id") String id) {
+        return commentsService.deleteComment(id);
+    }
 
 }

@@ -3,9 +3,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.myo.blog.dao.mapper.CommentMapper">
-    <!--查询文章的评论数量-->
-    <select id="queryCommentCount"  resultType="com.myo.blog.dao.dos.pinglunCount">
-        select count(*) from myo_comment where article_id=#{articleId}
-    </select>
+
+
 
 </mapper>

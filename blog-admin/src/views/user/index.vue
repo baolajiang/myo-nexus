@@ -113,6 +113,17 @@
             <el-radio label="99">封禁</el-radio>
           </el-radio-group>
         </el-form-item>
+
+        <el-form-item label="处理理由" v-if="editForm.status === '1' || editForm.status === '99'">
+          <el-input
+              v-model="editForm.remark"
+              type="textarea"
+              :rows="2"
+              placeholder="请输入警告或封禁的理由"
+              :disabled="!isEditMode"
+          />
+        </el-form-item>
+
       </el-form>
 
       <template #footer>
@@ -124,7 +135,12 @@
 
           <template v-else>
             <el-button @click="cancelEdit">取消编辑</el-button>
-            <el-button type="primary" :loading="submitLoading" @click="submitEdit">
+            <el-button
+                type="primary"
+                :loading="submitLoading"
+                :disabled="!isFormChanged"
+                @click="submitEdit"
+            >
               保存修改
             </el-button>
           </template>
@@ -136,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed} from 'vue'
 import { getUserList, updateUser } from '../../api/user'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
@@ -168,11 +184,20 @@ const editForm = reactive({
   mobilePhoneNumber: '',// 手机号
   avatar: '',// 头像
   lastIpaddr: '', // 最近登录IP
-  status: '0'// 状态
+  status: '0',// 状态
+  remark: '',// 备注
 })
 
 // 备份数据（用于取消编辑时恢复）
 const backupForm = reactive({...editForm})
+//判断表单内容是否发生了实质性变化
+const isFormChanged = computed(() => {
+  return editForm.nickname !== backupForm.nickname ||
+      editForm.email !== backupForm.email ||
+      editForm.mobilePhoneNumber !== backupForm.mobilePhoneNumber ||
+      editForm.status !== backupForm.status ||
+      editForm.remark !== backupForm.remark
+})
 
 const formatTime = (timestamp: number) => {
   if (!timestamp) return ''
@@ -230,6 +255,7 @@ const handleDetail = (row: any) => {
   editForm.avatar = row.avatar
   editForm.lastIpaddr = row.lastIpaddr || row.ipaddr
   editForm.status = String(row.status) || '0'
+  editForm.remark = row.remark || ''
 
   // 备份原始数据
   Object.assign(backupForm, editForm)

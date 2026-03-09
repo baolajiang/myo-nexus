@@ -202,6 +202,11 @@ public class SysUserServiceImpl implements SysUserService {
             updateWrapper.set(SysUser::getSex, userParam.getSex());
             hasUpdate = true;
         }
+        if (StringUtils.isNotBlank(userParam.getRemark())) {
+            updateWrapper.set(SysUser::getRemark, userParam.getRemark());
+            hasUpdate = true;
+        }
+
 
         if (hasUpdate) {
             int rows = this.sysUserMapper.update(null, updateWrapper);
@@ -214,6 +219,7 @@ public class SysUserServiceImpl implements SysUserService {
             }
             return rows;
         }
+
         return 0;
     }
 

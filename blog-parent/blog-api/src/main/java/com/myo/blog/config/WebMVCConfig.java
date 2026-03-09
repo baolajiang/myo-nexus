@@ -59,6 +59,8 @@ public class WebMVCConfig implements WebMvcConfigurer {
                 .addPathPatterns("/test")
                 .addPathPatterns("/comments/create/change")
                 .addPathPatterns("/articles/publish")
+                .addPathPatterns("/articles/update")
+                .addPathPatterns("/articles/delete")
                 .addPathPatterns("/articles/my")
                 .addPathPatterns("/admin/**")
                 .addPathPatterns("/categorys/**")

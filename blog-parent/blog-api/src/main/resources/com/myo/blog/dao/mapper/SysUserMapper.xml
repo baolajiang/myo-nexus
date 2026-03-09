@@ -35,7 +35,7 @@
     <select id="selectUserListWithLevelCheck" resultType="com.myo.blog.dao.pojo.SysUser">
         SELECT u.id, u.account, u.avatar, u.create_date, u.deleted, u.email,
                u.last_login, u.mobile_phone_number, u.nickname, u.status,
-               u.ipaddr, u.last_ipaddr, u.sex
+               u.ipaddr, u.last_ipaddr, u.sex, u.remark
         FROM myo_sys_user u
         WHERE u.id != #{currentUserId}
           AND IFNULL(

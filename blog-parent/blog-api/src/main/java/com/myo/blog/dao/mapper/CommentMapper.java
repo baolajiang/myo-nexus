@@ -8,6 +8,5 @@ import org.springframework.stereotype.Repository;
 @Mapper
 @Repository
 public interface CommentMapper extends BaseMapper<Comment> {
-    /*查询评论数量*/
-    public Integer queryCommentCount(long articleId);
+
 }

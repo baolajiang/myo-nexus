@@ -5,6 +5,8 @@ import com.myo.blog.dao.mapper.ArticleMapper;
 import com.myo.blog.dao.pojo.Article;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import com.myo.blog.dao.mapper.SysLogMapper;
+import com.myo.blog.dao.pojo.SysLog;
 /**
  * 线程池 异步执行 更新文章的阅读量
  */
@@ -37,6 +39,15 @@ public class ThreadService {
         updateWrapper.setSql("view_counts = IFNULL(view_counts, 0) + 1");
 
         articleMapper.update(null, updateWrapper);
+    }
+    /**
+     * 异步保存日志
+     * @param sysLogMapper 日志映射器
+     * @param sysLog 日志实体
+     */
+    @Async("taskExecutor")
+    public void saveLog(SysLogMapper sysLogMapper, SysLog sysLog) {
+        sysLogMapper.insert(sysLog);
     }
 
 }
