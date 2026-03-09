@@ -34,10 +34,6 @@
         <el-icon><Folder /></el-icon>
         <span>分類管理</span>
       </el-menu-item>
-      <el-menu-item index="/tag/index">
-        <el-icon><Collection /></el-icon>
-        <span>標籤管理</span>
-      </el-menu-item>
     </el-sub-menu>
 
     <el-sub-menu index="operation">
@@ -105,7 +101,7 @@
 import { useRoute } from 'vue-router'
 // 引入所有需要的圖標
 import {
-  Odometer, Document, Edit, List, Folder, Collection,
+  Odometer, Document, Edit, List, Folder,
   Operation, ChatDotRound, Link,
   User, UserFilled,
   Setting, Warning, DataLine, Picture, Refresh
