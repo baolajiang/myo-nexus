@@ -32,7 +32,7 @@ public class ArticleController {
     @PostMapping
     //加上此注解 代表要对此接口记录日志
     @LogAnnotation(module="文章",operator="获取文章列表")
-    @Cache(name = "listArticle" ,expire =  5 * 60 * 1000)
+    @Cache(expire =  5 * 60 * 1000,name = "listArticle" )
     public Result listArticle(@RequestBody PageParams pageParams,@RequestHeader("Authorization") String token){
     //获取到Authorization中的token，若token为null则表示没有登录
 

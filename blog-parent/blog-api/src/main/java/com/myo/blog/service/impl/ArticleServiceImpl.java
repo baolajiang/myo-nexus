@@ -23,12 +23,15 @@ import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -39,7 +42,7 @@ public class ArticleServiceImpl implements ArticleService {
     private final TagService tagService;
     private final SysUserService sysUserService;
     private final ArticleBodyMapper articleBodyMapper;
-
+    private final StringRedisTemplate stringRedisTemplate;
     private final CategoryService categoryService;
     private final ThreadService threadService;
     private final ArticleTagMapper articleTagMapper;
@@ -183,65 +186,77 @@ public class ArticleServiceImpl implements ArticleService {
     @Override
     @Transactional
     public Result publish(ArticleParam articleParam) {
-        // 1. 获取当前登录用户
+        // ==================== 1. 幂等性防护：Redis 分布式锁 ====================
         SysUser sysUser = UserThreadLocal.get();
-        // 2. 创建文章实体
-        Article article = new Article();
-        article.setAuthorId(sysUser.getId()); // 直接获取 String ID
-        article.setCategoryId(articleParam.getCategory().getId()); // 已经是 String
-        article.setCreateDate(System.currentTimeMillis());
-        article.setCommentCounts(0);
-        article.setSummary(articleParam.getSummary());
-        article.setTitle(articleParam.getTitle());
-        article.setViewCounts(0);
-        article.setWeight(Article.Article_Common);
-        article.setBodyId("-1");
-        article.setCover(articleParam.getCover());
-        // 3. 插入文章到数据库
-        this.articleMapper.insert(article);
+        // Key 加上用户 ID，保证不同用户之间互不影响
+        String lockKey = "LOCK:ARTICLE:PUBLISH:" + sysUser.getId();
 
-        // 4. 处理标签关联
-        List<TagVo> tags = articleParam.getTags();
-        if (tags != null) {
-            for (TagVo tag : tags) {
-                ArticleTag articleTag = new ArticleTag();
-                articleTag.setArticleId(article.getId());
-                articleTag.setTagId(tag.getId()); // 已经是 String
-                this.articleTagMapper.insert(articleTag);
-            }
+        // SETNX + 过期时间（原子操作），防止网络抖动导致前端重复提交
+        // 过期时间兜底：即使 finally 没执行（如 JVM 崩溃），5 秒后锁自动释放，不会死锁
+        Boolean locked = stringRedisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", 5, TimeUnit.SECONDS);
+        if (Boolean.FALSE.equals(locked)) {
+            return Result.fail(400, "操作太快啦，正在为您发布中，请勿重复点击！");
         }
 
-        // 5. 处理文章内容
-        ArticleBody articleBody = new ArticleBody();
-        articleBody.setContent(articleParam.getBody().getContent());
-        articleBody.setContentHtml(articleParam.getBody().getContentHtml());
-        articleBody.setArticleId(article.getId());
-        articleBodyMapper.insert(articleBody);
-
-        // 6. 更新文章的内容ID
-        article.setBodyId(articleBody.getId());
-        articleMapper.updateById(article);
-
-        // 7. 发送MQ消息清理缓存
-        // ================== 发送 MQ 消息 (生产级写法) ==================
         try {
-            // 发送消息
-            rabbitTemplate.convertAndSend(RabbitConfig.BLOG_EXCHANGE, "article.publish", article.getId());
-            log.info("【MQ消息发送成功】文章ID: {}", article.getId());
+            // ==================== 2. 构建并插入文章基本信息 ====================
+            Article article = new Article();
+            article.setAuthorId(sysUser.getId());
+            article.setCategoryId(articleParam.getCategory().getId());
+            article.setCreateDate(System.currentTimeMillis());
+            article.setCommentCounts(0);
+            article.setSummary(articleParam.getSummary());
+            article.setTitle(articleParam.getTitle());
+            article.setViewCounts(0);
+            article.setWeight(Article.Article_Common);
+            article.setBodyId("-1"); // 内容 ID 占位，下面插入 body 后再回填
+            article.setCover(articleParam.getCover());
+            this.articleMapper.insert(article);
 
-        } catch (AmqpException e) {
-            // 错误处理：如果 MQ 发送失败，不能让发布文章这个动作回滚！
-            // 只要数据库存进去了，文章就算发成功了。缓存没删掉顶多是延迟更新，不能影响主业务。
-            log.error("【MQ消息发送失败】MQ服务可能异常，请检查！文章ID: {}", article.getId(), e);
-            // 降级策略 (可选)：如果 MQ 挂了，这里可以手动删一次 Redis 作为兜底
-            // redisTemplate.delete("listArticle*");
+            // ==================== 3. 处理标签关联 ====================
+            List<TagVo> tags = articleParam.getTags();
+            if (tags != null) {
+                for (TagVo tag : tags) {
+                    ArticleTag articleTag = new ArticleTag();
+                    articleTag.setArticleId(article.getId());
+                    articleTag.setTagId(tag.getId());
+                    this.articleTagMapper.insert(articleTag);
+                }
+            }
+
+            // ==================== 4. 插入文章内容，并回填 bodyId ====================
+            ArticleBody articleBody = new ArticleBody();
+            articleBody.setContent(articleParam.getBody().getContent());
+            articleBody.setContentHtml(articleParam.getBody().getContentHtml());
+            articleBody.setArticleId(article.getId());
+            articleBodyMapper.insert(articleBody);
+
+            // 回填：将刚生成的 bodyId 更新到文章表
+            article.setBodyId(articleBody.getId());
+            articleMapper.updateById(article);
+
+            // ==================== 5. 发送 MQ 消息，异步清理文章列表缓存 ====================
+            // 注意：MQ 发送失败不能影响主业务（文章已入库即为成功）
+            // 失败后果：文章列表缓存未及时清理，最终一致性保证，不影响数据正确性
+            try {
+                rabbitTemplate.convertAndSend(RabbitConfig.BLOG_EXCHANGE, "article.publish", article.getId());
+                log.info("【MQ】缓存清理消息发送成功，文章ID: {}", article.getId());
+            } catch (AmqpException e) {
+                log.error("【MQ】消息发送失败，MQ 服务可能异常，文章ID: {}，请人工排查！", article.getId(), e);
+                // 降级兜底：MQ 挂了可在此处直接删 Redis（按需开启）
+                // stringRedisTemplate.delete("listArticle*");
+            }
+
+            // ==================== 6. 返回结果 ====================
+            Map<String, String> map = new HashMap<>();
+            map.put("id", article.getId());
+            return Result.success(map);
+
+        } finally {
+            // ==================== 7. 释放分布式锁 ====================
+            // 放在 finally 确保业务异常时锁也能被释放，避免用户在 5 秒内无法重试
+            stringRedisTemplate.delete(lockKey);
         }
-        // 8. 返回结果
-        Map<String, String> map = new HashMap<>();
-        map.put("id", article.getId()); // 已经是 String
-
-
-        return Result.success(map);
     }
 
     private List<ArticleVo> copyList(List<Article> records, boolean isTag, boolean isAuthor) {
