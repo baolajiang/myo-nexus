@@ -34,10 +34,6 @@
         <el-icon><Folder /></el-icon>
         <span>分類管理</span>
       </el-menu-item>
-      <el-menu-item index="/tag/index">
-        <el-icon><Collection /></el-icon>
-        <span>標籤管理</span>
-      </el-menu-item>
     </el-sub-menu>
 
     <el-sub-menu index="operation">

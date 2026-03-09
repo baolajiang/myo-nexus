@@ -32,11 +32,6 @@ const routes: Array<RouteRecordRaw> = [
                 component: () => import('../views/category/index.vue'),
                 meta: { title: '分类管理' }
             },
-            {
-                path: 'tag/index',
-                component: () => import('../views/tag/index.vue'),
-                meta: { title: '标签管理' }
-            },
             // === 运营管理 ===
             {
                 path: 'comment/index',
