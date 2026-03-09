@@ -40,6 +40,7 @@ public class AdminController {
      * 1. 手动封禁 IP
      */
     @PostMapping("ban")
+
     public Result banIp(@RequestParam String ip) {
         // 1. 写入 Redis (立刻生效)
         redisTemplate.opsForValue().set("BAN:IP:" + ip, "Manual Ban by Admin");
@@ -158,6 +159,15 @@ public class AdminController {
     @RequirePermission("comment:delete")
     public Result deleteComment(@PathVariable("id") String id) {
         return commentsService.deleteComment(id);
+    }
+
+    /**
+     * 分頁查詢操作日誌
+     */
+    @PostMapping("log/list")
+    @RequirePermission("sys:log:list") // 確保你有對應的權限標識
+    public Result listLog(@RequestBody PageParams pageParams) {
+        return sysUserService.listLog(pageParams);
     }
 
 }
