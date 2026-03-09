@@ -9,8 +9,33 @@ export function getArticleList(data: any) {
     })
 }
 
+// 发布文章 (新增)
+export function publishArticle(data: any) {
+    return request({
+        url: '/articles/publish',
+        method: 'post',
+        data
+    })
+}
 
-// 删除文章 (预留)
+// 更新文章 (修改)
+export function updateArticle(data: any) {
+    return request({
+        url: '/articles/update',
+        method: 'post',
+        data
+    })
+}
+
+// 获取文章详情 (用于编辑页面数据回显)
+export function getArticleById(id: string) {
+    return request({
+        url: `/articles/view/${id}`,
+        method: 'post'
+    })
+}
+
+// 删除文章
 export function deleteArticle(id: string) {
     return request({
         url: `/admin/article/delete/${id}`,

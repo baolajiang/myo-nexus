@@ -61,9 +61,24 @@ public interface ArticleService {
     Result publish(ArticleParam articleParam);
 
     /**
+     * 更新文章
+     * @param articleParam
+     * @return
+     */
+    Result updateArticle(ArticleParam articleParam);
+
+
+    /**
      * 后台管理：获取文章列表
      * @param pageParams 分页参数（可能包含 query 搜索关键词）
      * @return Result
      */
     Result listArticleForAdmin(PageParams pageParams);
+
+     /**
+     * 删除文章
+     * @param articleId
+     * @return
+     */
+    Result deleteArticle(String articleId);
 }

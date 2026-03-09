@@ -134,7 +134,13 @@ public class AdminController {
     }
 
 
-
-
+    /**
+     * 删除文章
+     */
+    @PostMapping("article/delete/{id}")
+    @RequirePermission("article:delete")
+    public Result deleteArticle(@PathVariable("id") String id) {
+        return articleService.deleteArticle(id);
+    }
 
 }

@@ -2,6 +2,7 @@ package com.myo.blog.controller;
 
 import com.myo.blog.common.aop.LogAnnotation;
 import com.myo.blog.common.aop.RateLimit;
+import com.myo.blog.common.aop.RequirePermission;
 import com.myo.blog.common.cache.Cache;
 import com.myo.blog.dao.pojo.SysUser;
 import com.myo.blog.service.ArticleService;
@@ -113,6 +114,16 @@ public class ArticleController {
     public Result publish(@RequestBody ArticleParam articleParam){
 
         return articleService.publish(articleParam);
+    }
+
+    /**
+     * 文章修改服务
+     */
+    @RateLimit(time = 10, count = 1, msg = "请勿重复提交")
+    @LogAnnotation(module="文章",operator="修改文章")
+    @PostMapping("update")
+    public Result update(@RequestBody ArticleParam articleParam){
+        return articleService.updateArticle(articleParam);
     }
 }
 
