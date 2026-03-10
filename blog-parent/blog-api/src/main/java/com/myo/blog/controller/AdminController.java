@@ -40,7 +40,8 @@ public class AdminController {
      * 1. 手动封禁 IP
      */
     @PostMapping("ban")
-
+    @RequirePermission("ip:edit")
+    @LogAnnotation(module = "系统管理", operator = "封禁用户")
     public Result banIp(@RequestParam String ip) {
         // 1. 写入 Redis (立刻生效)
         redisTemplate.opsForValue().set("BAN:IP:" + ip, "Manual Ban by Admin");
@@ -64,6 +65,8 @@ public class AdminController {
      * 同时删除 Redis 和 MySQL 中的记录
      */
     @PostMapping("unban")
+    @RequirePermission("ip:edit")
+    @LogAnnotation(module = "系统管理", operator = "解封用户")
     public Result unbanIp(@RequestParam String ip) {
         // 1. 删 Redis
         Boolean redisDeleted = redisTemplate.delete("BAN:IP:" + ip);
@@ -112,6 +115,7 @@ public class AdminController {
      */
     @RequirePermission("user:ban")
     @PostMapping("user/status")
+    @LogAnnotation(module = "用户管理", operator = "更新用户状态")
     public Result updateUserStatus(@RequestBody UserParam userParam) {
         // 直接调用 Service 层的新方法
         return sysUserService.updateUserStatus(userParam);
@@ -121,7 +125,7 @@ public class AdminController {
      */
     @PostMapping("user/update")
     @RequirePermission("user:edit")
-    @LogAnnotation(module = "用戶管理", operator = "編輯用戶資料")
+    @LogAnnotation(module = "用户管理", operator = "编辑用户资料")
     public Result updateUser(@RequestBody UserParam userParam) {
         // 复用 Service 层已有的 updateUser 方法
         // 该方法会处理基本信息更新，如果状态改为封禁(99)还会自动踢下线
@@ -145,6 +149,7 @@ public class AdminController {
      */
     @PostMapping("article/delete/{id}")
     @RequirePermission("article:delete")
+    @LogAnnotation(module = "文章管理", operator = "刪除文章")
     public Result deleteArticle(@PathVariable("id") String id) {
         return articleService.deleteArticle(id);
     }
@@ -157,6 +162,7 @@ public class AdminController {
 
     @PostMapping("comment/delete/{id}")
     @RequirePermission("comment:delete")
+    @LogAnnotation(module = "评论管理", operator = "删除评论")
     public Result deleteComment(@PathVariable("id") String id) {
         return commentsService.deleteComment(id);
     }
