@@ -109,10 +109,5 @@ public interface SysUserService {
      // 查询当前用户拥有的最小 level 值（官阶最大）
      Integer getHighestRoleLevel(String userId);
 
-    /**
-     * 分页查询日志列表
-     * @param pageParams
-     * @return
-     */
-    Result listLog(PageParams pageParams);
+
 }

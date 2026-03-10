@@ -1,0 +1,165 @@
+package com.myo.blog.service.impl;
+
+import com.alibaba.fastjson2.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.myo.blog.dao.mapper.SysLogMapper;
+import com.myo.blog.dao.pojo.SysLog;
+import com.myo.blog.entity.Result;
+import com.myo.blog.entity.params.PageParams;
+import com.myo.blog.service.SysLogService;
+import com.myo.blog.utils.R2UploadService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class SysLogServiceImpl implements SysLogService {
+
+    private final SysLogMapper sysLogMapper;
+    private final R2UploadService r2UploadService;
+
+    //  注入独立的 DbDeleter Bean，解决 @Transactional 自调用失效问题
+    private final SysLogDbDeleter sysLogDbDeleter;
+
+    private static final int BATCH_SIZE = 1000;
+
+    @Override
+    public Result listLog(PageParams pageParams) {
+        Page<SysLog> page = new Page<>(pageParams.getPage(), pageParams.getPageSize());
+        LambdaQueryWrapper<SysLog> queryWrapper = new LambdaQueryWrapper<>();
+
+        if (pageParams.getStatus() != null) {
+            queryWrapper.eq(SysLog::getStatus, pageParams.getStatus());
+        }
+        if (StringUtils.isNotBlank(pageParams.getModule())) {
+            queryWrapper.like(SysLog::getModule, pageParams.getModule());
+        }
+        if (StringUtils.isNotBlank(pageParams.getNickname())) {
+            queryWrapper.like(SysLog::getNickname, pageParams.getNickname());
+        }
+        if (StringUtils.isNotBlank(pageParams.getTraceId())) {
+            queryWrapper.eq(SysLog::getTraceId, pageParams.getTraceId());
+        }
+        if (StringUtils.isNotBlank(pageParams.getKeyword())) {
+            String kw = pageParams.getKeyword();
+            queryWrapper.and(q -> q.like(SysLog::getModule, kw)
+                    .or().like(SysLog::getNickname, kw)
+                    .or().like(SysLog::getTraceId, kw)
+                    .or().like(SysLog::getOperation, kw));
+        }
+
+        queryWrapper.orderByDesc(SysLog::getCreateDate);
+        Page<SysLog> logPage = sysLogMapper.selectPage(page, queryWrapper);
+        return Result.success(logPage);
+    }
+
+
+    /**
+     *HTTP 请求
+     *   → LogAspect（AOP 切面）拦截带 @LogAnnotation 的方法
+     *   → 收集 IP、参数、耗时、操作人、成功/失败状态
+     *   → ThreadService.saveLog()（异步，不阻塞主线程）
+     *   → 写入数据库
+     */
+    @Override
+
+    public void backupAndCleanLogs(Long expireTime) {
+        // 改用游标分页，用 lastId 代替 totalCount 计算页数
+        // 好处：① 不受任务执行期间新增数据影响；② 跳过失败批次后不会重复处理
+        long lastId = 0L;
+        int batchIndex = 1;
+
+        while (true) {
+            LambdaQueryWrapper<SysLog> wrapper = new LambdaQueryWrapper<>();
+            wrapper.lt(SysLog::getCreateDate, expireTime)
+                    .gt(SysLog::getId, lastId)           // 游标：只取上次处理之后的数据
+                    .orderByAsc(SysLog::getId)            // 必须按 id 升序，保证游标稳定
+                    .last("LIMIT " + BATCH_SIZE);
+
+            List<SysLog> records = sysLogMapper.selectList(wrapper);
+            if (records.isEmpty()) break;
+
+            log.info("[归档任务] 开始处理批次 {}，本批数量：{}", batchIndex, records.size());
+
+            boolean success = processSafeBackup(records, batchIndex);
+
+            if (success) {
+                // 只有成功才推进游标，失败则停止（避免无限重试同一批次）
+                lastId = records.get(records.size() - 1).getId();
+            } else {
+                log.error("[归档任务] 批次 {} 处理失败，任务终止，下次从 id={} 继续", batchIndex, lastId);
+                break;
+            }
+
+            batchIndex++;
+        }
+
+        log.info("[归档任务] 全部完成，共处理 {} 批次", batchIndex - 1);
+    }
+
+    /**
+     * 核心逻辑：先备份成功，再通过事务删除
+     * @return 是否处理成功
+     */
+    private boolean processSafeBackup(List<SysLog> records, int index) {
+        try {
+            byte[] data = JSON.toJSONString(records).getBytes(StandardCharsets.UTF_8);
+            String fileName = String.format("backup/%s/logs_batch_%d_%s.json",
+                    new SimpleDateFormat("yyyy-MM").format(new Date()),
+                    index,
+                    UUID.randomUUID().toString().substring(0, 8));
+
+            // 1. 先上传（在事务外，避免长事务占用连接）
+            boolean isUploaded = r2UploadService.uploadBytes(fileName, data);
+
+            if (isUploaded) {
+                // 2. 上传成功后，通过代理 Bean 调用事务方法，确保 @Transactional 真正生效
+                sysLogDbDeleter.deleteByIds(records);
+                log.info("[归档任务] 批次 {} 备份并清理成功", index);
+                return true;
+            } else {
+                log.error("[归档任务] 批次 {} 上传至 R2 失败，已跳过本地删除", index);
+                return false;
+            }
+        } catch (Exception e) {
+            log.error("[归档任务] 处理批次 {} 时发生异常", index, e);
+            return false;
+        }
+    }
+
+
+    // =========================================================
+    //  独立的 Bean，专门负责带事务的数据库删除
+    //    放在同一文件内（静态内部类），保持代码内聚，不用新建文件
+    // =========================================================
+    @Service
+    @RequiredArgsConstructor
+    public static class SysLogDbDeleter {
+
+        private final SysLogMapper sysLogMapper;
+
+        /**
+         * 带事务的批量删除，必须通过 Spring 代理调用才能生效
+         */
+        @Transactional(rollbackFor = Exception.class)
+        public void deleteByIds(List<SysLog> records) {
+            List<Long> ids = records.stream()
+                    .map(SysLog::getId)
+                    .collect(Collectors.toList());
+
+            sysLogMapper.delete(new LambdaQueryWrapper<SysLog>().in(SysLog::getId, ids));
+        }
+    }
+}

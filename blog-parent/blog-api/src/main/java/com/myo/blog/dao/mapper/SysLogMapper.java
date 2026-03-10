@@ -2,9 +2,12 @@ package com.myo.blog.dao.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.myo.blog.dao.pojo.SysLog;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface SysLogMapper extends BaseMapper<SysLog> {
+
 
 }

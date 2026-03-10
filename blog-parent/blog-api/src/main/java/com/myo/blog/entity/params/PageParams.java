@@ -18,6 +18,13 @@ public class PageParams {
     private String month;
 
     private String keyword;// 搜索关键词
+    // --- 新增独立搜索栏位 ---
+    private String module;     // 模块名称
+    private String nickname;   // 操作人
+    private Integer status;    // 状态 (0成功, 1失败)
+    private String traceId;    // 追踪ID
+    // --- 新增独立搜索栏位结束 ---
+
 
     public String getMonth(){
         if (this.month != null && this.month.length() == 1){

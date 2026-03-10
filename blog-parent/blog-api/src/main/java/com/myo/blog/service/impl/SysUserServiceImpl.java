@@ -380,32 +380,8 @@ public class SysUserServiceImpl implements SysUserService {
         return sysUserMapper.findPermissionNamesByUserId(userId);
     }
 
-    @Override
-    public Result listLog(PageParams pageParams) {
-        // 1. 創建分頁對象
-        Page<com.myo.blog.dao.pojo.SysLog> page = new Page<>(pageParams.getPage(), pageParams.getPageSize());
 
-        // 2. 構建查詢條件
-        LambdaQueryWrapper<com.myo.blog.dao.pojo.SysLog> queryWrapper = new LambdaQueryWrapper<>();
 
-        // 3. 多維度搜索
-        String keyword = pageParams.getKeyword();
-        if (org.apache.commons.lang3.StringUtils.isNotBlank(keyword)) {
-            queryWrapper.and(q -> q.like(com.myo.blog.dao.pojo.SysLog::getModule, keyword)
-                    .or().like(com.myo.blog.dao.pojo.SysLog::getNickname, keyword)
-                    .or().like(com.myo.blog.dao.pojo.SysLog::getTraceId, keyword)
-                    .or().like(com.myo.blog.dao.pojo.SysLog::getOperation, keyword));
-        }
-
-        // 4. 按時間倒序排列（最新的日誌在最前面）
-        queryWrapper.orderByDesc(com.myo.blog.dao.pojo.SysLog::getCreateDate);
-
-        // 5. 執行分頁查詢
-        Page<com.myo.blog.dao.pojo.SysLog> logPage = sysLogMapper.selectPage(page, queryWrapper);
-
-        // 6. 返回結果
-        return Result.success(logPage);
-    }
 
     @Override
     public List<String> getUserRoleNames(String userId) {

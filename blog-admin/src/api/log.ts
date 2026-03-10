@@ -7,3 +7,4 @@ export function getLogList(params: any) {
         data: params // PageParams 包含 page, pageSize, keyword
     })
 }
+

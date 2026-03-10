@@ -1,8 +1,8 @@
 package com.myo.blog.utils;
 
 import cn.hutool.core.img.Img;
-import cn.hutool.core.io.FileTypeUtil; // 如果 hutool 版本较新，可能不需要这个，直接用 contentType 判断
 import cn.hutool.core.util.StrUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,13 +14,13 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
-import java.util.UUID;
 
+@Slf4j
 @Service
 public class R2UploadService {
 
@@ -52,8 +52,17 @@ public class R2UploadService {
                 .build();
     }
 
+    // ：新增 @PreDestroy，应用关闭时释放 S3Client 连接池资源
+    @PreDestroy
+    public void destroy() {
+        if (s3Client != null) {
+            s3Client.close();
+        }
+    }
+
     /**
      * 上传图片到 R2，并自动生成 _thumb.jpg 缩略图
+     *
      * @param file 前端传来的文件
      * @param path 路径文件夹，例如 "common" 或 "avatar"
      * @return 原图的完整访问 URL
@@ -62,47 +71,43 @@ public class R2UploadService {
         String originalFilename = file.getOriginalFilename();
 
         // 1. 获取后缀
-        String suffix = ".jpg"; // 默认兜底
+        String suffix = ".jpg";
         if (originalFilename != null && originalFilename.contains(".")) {
             suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
         }
 
-        // 2. 生成文件名 (优化：变量名改为 fileId，使用 path 作为序列号的 key)
-        // 这样 avatar 就用 avatar 的序列，cover 就用 cover 的序列
+        // 2. 生成文件名
         String fileId = SerialGenerator.generate(path);
         String key = path + "/" + fileId + suffix;
 
-        // 3. 上传【原图】
+        // ：一次性读取字节，避免 InputStream 被消费两次
+        byte[] fileBytes = file.getBytes();
+
+        // 3. 上传原图
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucketName)
                 .key(key)
                 .contentType(file.getContentType())
                 .build();
 
-        s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+        s3Client.putObject(putObjectRequest, RequestBody.fromBytes(fileBytes));
 
-        // ================== 生成并上传缩略图 ==================
-        try {
-            String contentType = file.getContentType();
-            // 简单判断是否为图片
-            if (contentType != null && contentType.startsWith("image/")) {
-
-                // 缩略图文件名：例如 common/1001_thumb.jpg
+        // 4. 生成并上传缩略图
+        String contentType = file.getContentType();
+        if (contentType != null && contentType.startsWith("image/")) {
+            try {
                 String thumbKey = path + "/" + fileId + "_thumb.jpg";
-
                 ByteArrayOutputStream thumbOut = new ByteArrayOutputStream();
 
-                // ★★★ 优化点：强制转为 JPEG 格式 ★★★
-                // 这样无论原图是 PNG 还是 WebP，缩略图统一变成体积最小的 JPG
-                Img.from(file.getInputStream())
-                        .setTargetImageType("jpg") // 强制输出 JPG
-                        .setQuality(0.2)           // 20% 质量
-                        .scale(50, -1)             // 宽 50px
+                // ：用 ByteArrayInputStream 包装已读取的字节，而不是重新调用 getInputStream()
+                Img.from(new ByteArrayInputStream(fileBytes))
+                        .setTargetImageType("jpg")
+                        .setQuality(0.2)
+                        .scale(300, -1)   // ：50px 太小，改为 300px
                         .write(thumbOut);
 
                 byte[] thumbBytes = thumbOut.toByteArray();
 
-                // 上传缩略图
                 PutObjectRequest thumbRequest = PutObjectRequest.builder()
                         .bucket(bucketName)
                         .key(thumbKey)
@@ -111,14 +116,45 @@ public class R2UploadService {
 
                 s3Client.putObject(thumbRequest, RequestBody.fromBytes(thumbBytes));
 
-                 //System.out.println("缩略图生成完毕: " + thumbKey);
+            } catch (Exception e) {
+                // 缩略图失败不影响主流程，但必须记录日志
+                // ：替换 e.printStackTrace()，改用 log.error 进入日志系统
+                log.error("[R2] 缩略图生成或上传失败, key={}", key, e);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            // 缩略图失败不影响主流程
         }
 
         // 5. 返回访问 URL
         return domain.endsWith("/") ? domain + key : domain + "/" + key;
+    }
+
+    /**
+     * 通用的字节流上传方法（用于日志备份等非图片文件）
+     *
+     * @param key   存储路径和文件名，例如 "backup/logs_2026_03.json"
+     * @param bytes 文件的字节数组
+     * @return 是否上传成功
+     */
+    public boolean uploadBytes(String key, byte[] bytes) {
+        try {
+            String contentType = "application/octet-stream";
+            if (key.endsWith(".json")) {
+                contentType = "application/json";
+            } else if (key.endsWith(".txt")) {
+                contentType = "text/plain";
+            }
+
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .contentType(contentType)
+                    .build();
+
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(bytes));
+            return true;
+        } catch (Exception e) {
+            // ：替换 e.printStackTrace()，改用 log.error 进入日志系统
+            log.error("[R2] 字节流上传失败, key={}", key, e);
+            return false;
+        }
     }
 }

@@ -13,6 +13,7 @@ import com.myo.blog.entity.params.PageParams;
 import com.myo.blog.entity.params.UserParam;
 import com.myo.blog.service.ArticleService;
 import com.myo.blog.service.CommentsService;
+import com.myo.blog.service.SysLogService;
 import com.myo.blog.service.SysUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,8 @@ public class AdminController {
     private final SysUserService sysUserService;
 
     private final CommentsService commentsService;
+
+    private final SysLogService sysLogService;
     /**
      * 1. 手动封禁 IP
      */
@@ -173,7 +176,7 @@ public class AdminController {
     @PostMapping("log/list")
     @RequirePermission("sys:log:list") // 確保你有對應的權限標識
     public Result listLog(@RequestBody PageParams pageParams) {
-        return sysUserService.listLog(pageParams);
+        return sysLogService.listLog(pageParams);
     }
 
 }
