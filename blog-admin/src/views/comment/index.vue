@@ -38,7 +38,7 @@
 
         <el-table-column label="所属文章" min-width="200" show-overflow-tooltip>
           <template #default="scope">
-            <el-link type="primary" :underline="false">
+            <el-link type="primary"  underline="never">
               {{ scope.row.articleTitle || '文章(ID:' + scope.row.articleId + ')' }}
             </el-link>
           </template>

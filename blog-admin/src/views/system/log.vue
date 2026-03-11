@@ -187,6 +187,7 @@ onMounted(() => {
   color: #abb2bf;
   padding: 15px;
   border-radius: 4px;
+  border-radius: 4px;
   max-height: 350px;
   overflow-y: auto;
   font-family: 'Courier New', Courier, monospace;

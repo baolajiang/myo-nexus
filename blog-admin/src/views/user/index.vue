@@ -108,9 +108,9 @@
 
         <el-form-item label="状态">
           <el-radio-group v-model="editForm.status" :disabled="!isEditMode">
-            <el-radio label="0">正常</el-radio>
-            <el-radio label="1">警告</el-radio>
-            <el-radio label="99">封禁</el-radio>
+            <el-radio  value="0">正常</el-radio>
+            <el-radio  value="1">警告</el-radio>
+            <el-radio  value="99">封禁</el-radio>
           </el-radio-group>
         </el-form-item>
 
