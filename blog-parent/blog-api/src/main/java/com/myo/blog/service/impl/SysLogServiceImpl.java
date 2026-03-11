@@ -67,14 +67,19 @@ public class SysLogServiceImpl implements SysLogService {
 
 
     /**
-     *HTTP 请求
-     *   → LogAspect（AOP 切面）拦截带 @LogAnnotation 的方法
-     *   → 收集 IP、参数、耗时、操作人、成功/失败状态
-     *   → ThreadService.saveLog()（异步，不阻塞主线程）
-     *   → 写入数据库
+     备份清理主流程（backupAndCleanLogs）
+     用游标分页驱动整个任务：
+     lastId = 0
+     while(true):
+         查询 id > lastId 且 createDate < 30天前 的数据，取 1000 条
+         如果没数据 → 结束
+         调用 processSafeBackup 处理这批
+         成功 → lastId 推进到这批最后一条的 id，继续下一批
+         失败 → 记录日志，终止任务（等明天凌晨重试）
+     为什么用游标而不是普通分页（page=1,2,3...）？因为删掉第一批之后，第二页的数据会往前移，用页码会漏数据。
+     用 id > lastId 就不会有这个问题。
      */
     @Override
-
     public void backupAndCleanLogs(Long expireTime) {
         // 改用游标分页，用 lastId 代替 totalCount 计算页数
         // 好处：① 不受任务执行期间新增数据影响；② 跳过失败批次后不会重复处理
@@ -110,8 +115,14 @@ public class SysLogServiceImpl implements SysLogService {
     }
 
     /**
-     * 核心逻辑：先备份成功，再通过事务删除
-     * @return 是否处理成功
+     单批处理（processSafeBackup）
+     这是最核心的安全逻辑，顺序非常重要：
+     ① 把这 1000 条序列化成 JSON bytes
+     ② 上传到 R2（文件名：backup/yyyy-MM/logs_batch_N_随机码.json）
+     ③ 上传成功？
+        是 → 走事务删除数据库记录
+        否 → 直接返回 false，数据库记录保留不动
+     先备份、后删除，确保数据不会丢。如果上传失败，数据库里的数据完整保留，等下次任务重新处理。
      */
     private boolean processSafeBackup(List<SysLog> records, int index) {
         try {
