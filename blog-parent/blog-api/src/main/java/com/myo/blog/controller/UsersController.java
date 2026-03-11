@@ -44,8 +44,7 @@ public class UsersController {
     }
     @GetMapping("info/{id}")
     public Result getUserPublicInfo(@PathVariable("id") String id) {
-        System.out.println(id);
-        System.out.println("根据ID查询用户信息: " + sysUserService.findUserVoById(id));
+
         return Result.success(sysUserService.findUserVoById(id));
     }
 

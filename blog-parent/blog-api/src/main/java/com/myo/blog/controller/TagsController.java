@@ -52,7 +52,7 @@ public class TagsController {
     @PutMapping
     @RequirePermission("tag:edit")
     public Result updateTag(@RequestBody Tag tag) {
-        System.out.println("更新标签控制器" );
+
         return tagService.updateTag(tag);
     }
 

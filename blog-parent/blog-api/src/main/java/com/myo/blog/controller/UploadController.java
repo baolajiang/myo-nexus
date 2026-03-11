@@ -55,7 +55,7 @@ public class UploadController {
         List<Article> articles = articleMapper.selectList(queryWrapper);
         int id=Integer.parseInt(String.valueOf(articles.get(0).getId()));
         String cover="cover/cover"+id;
-        System.out.println("cover值："+id);*/
+        */
         //UUID.randomUUID().toString()文件名称变成cover.jpg
         String fileName ="cover/"+ UUID.randomUUID().toString() + "." + StringUtils.substringAfterLast(originalFilename, ".");
         //上传文件

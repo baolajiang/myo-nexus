@@ -1,150 +1,281 @@
 package com.myo.blog.common.cache;
 
 import com.alibaba.fastjson.JSON;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myo.blog.entity.Result;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.Signature;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.UUID;
 
 /**
- * 基于 Redis 的方法级缓存切面
- * 配合自定义注解 {@link Cache} 使用。只需在 Service 方法上加
- * {@code @Cache(name="xxx", expire=60000)}，该切面就会自动拦截方法调用，
- * 实现"先查 Redis，有则直接返回缓存，无则执行方法并将结果写入 Redis"的逻辑。
- * 缓存 Key 的构成规则
- *   {注解name} :: {类名} :: {方法名} :: {参数的MD5}
- *   例：article::ArticleServiceImpl::listArticle::a1b2c3d4...
- * 参数部分经过 MD5 处理，既避免 key 过长，也防止参数中的特殊字符导致 Redis 取不到值。
+ * 基于 Redis 的方法级缓存切面，配合 {@link Cache} 注解使用。
+ *
+ * 使用方式：在 Service 方法上加 @Cache(name="article", expire=60000)
+ * 切面会自动拦截，实现"先查缓存，命中直接返回，未命中查库并写入缓存"。
+ *
+ * Redis Key 格式：{name}::{类名}::{方法名}::{参数MD5}
+ * 示例：article::ArticleServiceImpl::listArticle::a1b2c3d4
+ *
+ * 解决的三大缓存问题：
+ *   - 缓存穿透：DB 无数据时写入 "NULL" 占位符，2分钟后过期
+ *   - 缓存击穿：分布式锁 + UUID + Lua 原子释放，防止热点 key 过期时大量请求同时打库
+ *   - 缓存雪崩：过期时间加 0~30s 随机抖动，避免大量 key 同时失效
  */
-@Aspect    // 声明这是一个 AOP 切面类
-@Component // 注册为 Spring Bean，让 Spring 能管理它
-@Slf4j     // 注入 log 对象，方便打印日志
-@RequiredArgsConstructor// 自动注入 RedisTemplate，无需手动配置
+@Aspect
+@Component
+@Slf4j
+@RequiredArgsConstructor
 public class CacheAspect {
-
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-
 
     private final RedisTemplate<String, String> redisTemplate;
 
+    // -------------------------------------------------------------------------
+    // 常量配置
+    // -------------------------------------------------------------------------
+
+    /** 空值占位符。DB 无数据时存入此值，防止缓存穿透 */
+    private static final String NULL_VALUE = "NULL";
+
+    /** 分布式锁 key 前缀，与业务 key 区分开 */
+    private static final String LOCK_PREFIX = "lock::";
+
+    /** 分布式锁持有超时时间。超时自动释放，防止线程崩溃后死锁 */
+    private static final Duration LOCK_EXPIRE = Duration.ofSeconds(10);
+
+    /** 空值占位符的过期时间。不宜太长，避免长期占用内存 */
+    private static final Duration NULL_EXPIRE = Duration.ofMinutes(2);
+
+    /** 雪崩抖动上限（毫秒）。实际过期时间 = expire + [0, 30s) 随机值 */
+    private static final long JITTER_MAX_MS = 30_000L;
+
+    /** 未抢到锁时的单次等待时间（毫秒） */
+    private static final long LOCK_WAIT_MS = 50L;
+
     /**
-     * 切点：拦截所有标注了 @Cache 注解的方法。
-     * 后续的 @Around 通知通过引用 pt() 来复用这个切点定义。
+     * 抢锁最大重试次数。
+     * 50次 × 50ms = 最长等待约 2.5 秒，超出后降级直接查库
      */
+    private static final int MAX_RETRY_COUNT = 50;
+
+    /**
+     * Lua 脚本：原子性地"判断 + 删除"锁，防止误删其他线程的锁。
+     *
+     * 为什么必须用 Lua？
+     *   如果"判断值"和"删除"是两个 Redis 命令，中间可能被打断：
+     *   线程A判断完、还没删除时锁超时 → 线程B拿到锁 → 线程A再删就误删了线程B的锁。
+     *   Lua 脚本在 Redis 中是原子执行的，整个过程不会被其他命令插入。
+     *
+     * 逻辑：GET key == uuid ? DEL key : 不操作
+     *
+     * 提为 static final，避免每次释放锁时重复创建对象（高并发下有意义）
+     */
+    private static final DefaultRedisScript<Long> UNLOCK_SCRIPT;
+    static {
+        UNLOCK_SCRIPT = new DefaultRedisScript<>();
+        UNLOCK_SCRIPT.setScriptText(
+                "if redis.call('get', KEYS[1]) == ARGV[1] " +
+                        "then return redis.call('del', KEYS[1]) " +
+                        "else return 0 end"
+        );
+        UNLOCK_SCRIPT.setResultType(Long.class);
+    }
+
+    // -------------------------------------------------------------------------
+    // 切点 & 主流程
+    // -------------------------------------------------------------------------
+
+    /** 切点：拦截所有标注了 @Cache 注解的方法 */
     @Pointcut("@annotation(com.myo.blog.common.cache.Cache)")
     public void pt() {}
 
     /**
-     * 环绕通知：在目标方法执行前后都能介入，是实现缓存逻辑的核心。
-     * 执行流程：
-     *   拼接缓存 Key（类名 + 方法名 + 参数MD5）
-     *   查 Redis：命中则直接返回缓存结果，不再执行真实方法
-     *   未命中：调用真实方法，将结果写入 Redis 并设置过期时间
-     *   任何异常均兜底返回系统错误，避免因缓存逻辑崩溃影响业务
-     * 
+     * 环绕通知：缓存读写主逻辑。
      *
-     * @param pjp 连接点，封装了被拦截方法的所有信息（类、方法名、参数等），
-     *            调用 pjp.proceed() 才会真正执行目标方法
+     * 流程：
+     *   1. 构造 Redis Key
+     *   2. 查缓存：命中则直接返回（含空值占位符处理）
+     *   3. 未命中：进入加锁重建流程
+     *   4. 异常兜底：降级直接执行真实方法，保证业务可用
      */
     @Around("pt()")
     public Object around(ProceedingJoinPoint pjp) {
         try {
-            Signature signature = pjp.getSignature();
+            Method method = getMethod(pjp);
+            Cache cacheAnnotation = method.getAnnotation(Cache.class);
+            String redisKey = buildRedisKey(pjp, method, cacheAnnotation);
 
-            // ----------------------------------------------------------------
-            // 第一步：收集被拦截方法的基本信息，用于拼接唯一的缓存 Key
-            // ----------------------------------------------------------------
+            // 查缓存
+            String redisValue = redisTemplate.opsForValue().get(redisKey);
+            if (StringUtils.isNotEmpty(redisValue)) {
+                // 命中空值占位符：DB 本来就没数据，直接返回空，不打库
+                if (NULL_VALUE.equals(redisValue)) {
+                    log.debug("[缓存] 命中空值占位符，key={}", redisKey);
+                    return Result.success(null);
+                }
+                log.debug("[缓存] 命中，key={}", redisKey);
+                return JSON.parseObject(redisValue, Result.class);
+            }
 
-            // 被拦截的类名，例如 "ArticleServiceImpl"
-            String className = pjp.getTarget().getClass().getSimpleName();
+            // 缓存未命中，加分布式锁后重建
+            return loadWithLock(pjp, redisKey, cacheAnnotation.expire());
 
-            // 被拦截的方法名，例如 "listArticle"
-            String methodName = signature.getName();
+        } catch (Throwable throwable) {
+            // 兜底降级：无论是 Redis 故障、反射出错还是业务异常，都不能让接口 500
+            // 策略：绕过缓存，直接执行真实方法
+            log.error("[缓存] 切面异常，降级直接执行，原因：{}", throwable.getMessage(), throwable);
+            try {
+                return pjp.proceed();
+            } catch (Throwable e) {
+                log.error("[缓存] 降级执行也失败", e);
+                return Result.fail(-999, "系统错误");
+            }
+        }
+    }
 
-            // 方法的实际入参，用于拼接 key（同一个方法、不同参数应该缓存不同结果）
-            Object[] args = pjp.getArgs();
-            Class[] parameterTypes = new Class[args.length];
+    // -------------------------------------------------------------------------
+    // 加锁重建缓存
+    // -------------------------------------------------------------------------
 
-            // 把所有参数序列化为 JSON 字符串拼在一起
-            String params = "";
-            for (int i = 0; i < args.length; i++) {
-                if (args[i] != null) {
-                    params += JSON.toJSONString(args[i]);
-                    parameterTypes[i] = args[i].getClass();
-                } else {
-                    parameterTypes[i] = null;
+    /**
+     * 加分布式锁后重建缓存，防止缓存击穿。
+     *
+     * 流程：
+     *   while 循环尝试抢锁（最多 MAX_RETRY_COUNT 次）
+     *     ├─ 抢到锁 → 双重检查 → 查库 → 写缓存 → Lua 释放锁
+     *     └─ 未抢到 → 等待 50ms → 重试
+     *   超过重试次数 → 降级直接查库
+     *
+     * @param pjp      连接点
+     * @param redisKey 业务缓存 key
+     * @param expire   注解配置的过期时间（毫秒）
+     */
+    private Object loadWithLock(ProceedingJoinPoint pjp, String redisKey, long expire) throws Throwable {
+        String lockKey = LOCK_PREFIX + redisKey;
+
+        // 优化：lockValue 提到循环外，只生成一次
+        // 同一次"抢锁任务"始终使用同一个 UUID，重试时不需要换新值
+        String lockValue = UUID.randomUUID().toString();
+
+        int retryCount = 0;
+        while (retryCount < MAX_RETRY_COUNT) {
+
+            // 尝试加锁：SET lockKey lockValue NX PX 10000（原子操作）
+            Boolean locked = redisTemplate.opsForValue()
+                    .setIfAbsent(lockKey, lockValue, LOCK_EXPIRE);
+
+            if (Boolean.TRUE.equals(locked)) {
+                // 抢到锁，由本线程负责重建缓存
+                try {
+                    // 双重检查：等锁期间其他线程可能已经写好缓存了，避免重复查库
+                    String redisValue = redisTemplate.opsForValue().get(redisKey);
+                    if (StringUtils.isNotEmpty(redisValue)) {
+                        if (NULL_VALUE.equals(redisValue)) return Result.success(null);
+                        return JSON.parseObject(redisValue, Result.class);
+                    }
+
+                    // 执行真实业务方法
+                    Object proceed = pjp.proceed();
+
+                    // 判断是否为空数据，决定写正常缓存还是空值占位符
+                    if (isEmptyResult(proceed)) {
+                        // 防穿透：DB 也没数据，写空值占位符，较短过期时间
+                        log.debug("[缓存] DB 无数据，写入空值占位符，key={}", redisKey);
+                        redisTemplate.opsForValue().set(redisKey, NULL_VALUE, NULL_EXPIRE);
+                    } else {
+                        // 防雪崩：在注解配置的过期时间上加随机抖动，错开失效时间
+                        long jitter = (long) (Math.random() * JITTER_MAX_MS);
+                        Duration finalExpire = Duration.ofMillis(expire + jitter);
+                        redisTemplate.opsForValue().set(redisKey, JSON.toJSONString(proceed), finalExpire);
+                        log.debug("[缓存] 写入缓存，key={}，过期={}ms（含抖动）", redisKey, finalExpire.toMillis());
+                    }
+
+                    return proceed;
+
+                } finally {
+                    // 用 Lua 脚本原子释放锁：先比对 UUID，是自己的才删除
+                    // 防止场景：线程A锁超时自动释放 → 线程B拿到锁 → 线程A走finally误删线程B的锁
+                    redisTemplate.execute(
+                            UNLOCK_SCRIPT,
+                            Collections.singletonList(lockKey),
+                            lockValue
+                    );
                 }
             }
 
-            // 对参数字符串做 MD5：
-            // ① 防止参数太长导致 Redis Key 超长
-            // ② 防止参数里有特殊字符（如空格、冒号）导致 Key 格式混乱
-            if (StringUtils.isNotEmpty(params)) {
-                params = DigestUtils.md5Hex(params);
-            }
-
-            // ----------------------------------------------------------------
-            // 第二步：读取方法上的 @Cache 注解，获取缓存配置
-            // ----------------------------------------------------------------
-
-            // 通过反射找到目标方法对象
-            Method method = pjp.getSignature().getDeclaringType().getMethod(methodName, parameterTypes);
-
-            // 取出方法上的 @Cache 注解
-            Cache annotation = method.getAnnotation(Cache.class);
-
-            // 从注解中读取缓存过期时间（毫秒）和缓存名称前缀
-            long expire = annotation.expire();
-            String name = annotation.name();
-
-            // ----------------------------------------------------------------
-            // 第三步：拼接 Redis Key，查询缓存
-            // ----------------------------------------------------------------
-
-            // 最终 Key 格式：article::ArticleServiceImpl::listArticle::a1b2c3...
-            String redisKey = name + "::" + className + "::" + methodName + "::" + params;
-
-            String redisValue = redisTemplate.opsForValue().get(redisKey);
-
-            // 缓存命中：直接把 JSON 反序列化成 Result 对象返回，不执行真实方法
-            if (StringUtils.isNotEmpty(redisValue)) {
-                log.debug("缓存命中，key={}", redisKey);
-                Result result = JSON.parseObject(redisValue, Result.class);
-                return result;
-            }
-
-            // ----------------------------------------------------------------
-            // 第四步：缓存未命中，执行真实的业务方法
-            // ----------------------------------------------------------------
-
-            // pjp.proceed() 是真正调用目标方法的地方，相当于放行
-            Object proceed = pjp.proceed();
-
-            // 将方法返回值序列化为 JSON 字符串，存入 Redis，并设置过期时间
-            redisTemplate.opsForValue().set(redisKey, JSON.toJSONString(proceed), Duration.ofMillis(expire));
-            log.debug("结果已写入缓存，key={}，过期时间={}ms", redisKey, expire);
-
-            return proceed;
-
-        } catch (Throwable throwable) {
-            // 无论是反射出错、Redis 连接失败还是业务方法抛异常，
-            // 统一在这里捕获并打印堆栈，返回系统错误，防止异常向上传播导致接口 500
-            throwable.printStackTrace();
+            // 未抢到锁，等待后重试
+            retryCount++;
+            log.debug("[缓存] 未抢到锁，等待{}ms后重试({}/{})，key={}", LOCK_WAIT_MS, retryCount, MAX_RETRY_COUNT, redisKey);
+            Thread.sleep(LOCK_WAIT_MS);
         }
 
-        return Result.fail(-999, "系统错误");
+        // 超过最大重试次数，降级直接查库，保证业务可用
+        log.warn("[缓存] 等待锁超时（{}次），降级直接查库，key={}", MAX_RETRY_COUNT, redisKey);
+        return pjp.proceed();
+    }
+
+    // -------------------------------------------------------------------------
+    // 工具方法
+    // -------------------------------------------------------------------------
+
+    /**
+     * 判断业务返回值是否为"空数据"。
+     *
+     * 项目中 Service 层统一返回 Result 对象，proceed 不会是 null，
+     * 必须拆开 Result 判断里面的 data 字段。
+     * 非 Result 类型时保守返回 false（认为有数据），不缓存空值。
+     */
+    private boolean isEmptyResult(Object proceed) {
+        if (proceed instanceof Result result) {
+            return result.getData() == null;
+        }
+        return false;
+    }
+
+    /**
+     * 构造 Redis Key。
+     * 格式：{name}::{类名}::{方法名}::{参数MD5}
+     *
+     * 参数部分经过 MD5：① 防止 key 过长 ② 防止参数含特殊字符
+     * 无参数时使用固定字符串 "noargs"
+     */
+    private String buildRedisKey(ProceedingJoinPoint pjp, Method method, Cache annotation) {
+        String className = pjp.getTarget().getClass().getSimpleName();
+        String methodName = method.getName();
+
+        Object[] args = pjp.getArgs();
+        String paramsMd5 = "noargs";
+        if (args != null && args.length > 0) {
+            StringBuilder params = new StringBuilder();
+            for (Object arg : args) {
+                params.append(arg != null ? JSON.toJSONString(arg) : "null");
+            }
+            paramsMd5 = DigestUtils.md5Hex(params.toString());
+        }
+
+        return annotation.name() + "::" + className + "::" + methodName + "::" + paramsMd5;
+    }
+
+    /**
+     * 从 AOP 连接点获取被拦截的 Method 对象。
+     *
+     * 使用 MethodSignature 而不是手动反射，安全且准确。
+     * 手动反射的问题：通过 args[i].getClass() 推断参数类型，
+     * 多态时会出错（方法定义 List，实际传 ArrayList，反射找不到方法）。
+     */
+    private Method getMethod(ProceedingJoinPoint pjp) {
+        return ((MethodSignature) pjp.getSignature()).getMethod();
     }
 }

@@ -79,7 +79,7 @@ public class ArticleServiceImpl implements ArticleService {
         );
 
         List<Article> records = articleIPage.getRecords();
-        System.out.println("看看数据："+records);
+
         // 4. 【核心優化點】 將資料庫實體轉換為前端視圖對象 (VO)
 
         List<ArticleVo> articleVoList = copyList(records, true, true, false, false, isToken);
@@ -334,6 +334,55 @@ public class ArticleServiceImpl implements ArticleService {
         }
     }
 
+    @Override
+    @Transactional
+    public Result deleteArticle(String id) {
+        // 1. 获取当前登录用户（管理员）
+        SysUser sysUser = UserThreadLocal.get();
+
+        // 2. 构造防重 Redis Key，精确到用户ID和文章ID
+        String lockKey = "LOCK:ARTICLE:DELETE:" + sysUser.getId() + ":" + id;
+        Boolean locked = stringRedisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", 5, TimeUnit.SECONDS);
+
+        if (Boolean.FALSE.equals(locked)) {
+            return Result.fail(400, "操作太快啦，正在处理中，请勿频繁点击！");
+        }
+
+        try {
+            // 3. 删除文章主表
+            this.articleMapper.deleteById(id);
+
+            // 4. 删除文章内容表
+            LambdaQueryWrapper<ArticleBody> bodyQuery = new LambdaQueryWrapper<>();
+            bodyQuery.eq(ArticleBody::getArticleId, id);
+            this.articleBodyMapper.delete(bodyQuery);
+
+            // 5. 删除文章标签关联表
+            LambdaQueryWrapper<ArticleTag> tagQuery = new LambdaQueryWrapper<>();
+            tagQuery.eq(ArticleTag::getArticleId, id);
+            this.articleTagMapper.delete(tagQuery);
+
+            // 6. 删除文章相关的评论
+            LambdaQueryWrapper<Comment> commentQuery = new LambdaQueryWrapper<>();
+            commentQuery.eq(Comment::getArticleId, id);
+            this.commentMapper.delete(commentQuery);
+
+            // 7. 发送 MQ 消息清理缓存
+            try {
+                rabbitTemplate.convertAndSend(RabbitConfig.BLOG_EXCHANGE, "article.delete", id);
+                log.info("【MQ】缓存清理消息发送成功，文章及相关数据已删除，ID: {}", id);
+            } catch (AmqpException e) {
+                log.error("【MQ】消息发送失败，MQ 服务可能异常，但不影响删除。文章ID: {}", id, e);
+            }
+
+            return Result.success("删除成功");
+
+        } finally {
+            // 8. 解除分布式锁
+            stringRedisTemplate.delete(lockKey);
+        }
+    }
+
     private List<ArticleVo> copyList(List<Article> records, boolean isTag, boolean isAuthor) {
         List<ArticleVo> articleVoList = new ArrayList<>();
         for (Article record : records) {
@@ -524,52 +573,5 @@ public class ArticleServiceImpl implements ArticleService {
         return Result.success(result);
     }
 
-    @Override
-    @Transactional
-    public Result deleteArticle(String id) {
-        // 1. 获取当前登录用户（管理员）
-        SysUser sysUser = UserThreadLocal.get();
 
-        // 2. 构造防重 Redis Key，精确到用户ID和文章ID
-        String lockKey = "LOCK:ARTICLE:DELETE:" + sysUser.getId() + ":" + id;
-        Boolean locked = stringRedisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", 5, TimeUnit.SECONDS);
-
-        if (Boolean.FALSE.equals(locked)) {
-            return Result.fail(400, "操作太快啦，正在处理中，请勿频繁点击！");
-        }
-
-        try {
-            // 3. 删除文章主表
-            this.articleMapper.deleteById(id);
-
-            // 4. 删除文章内容表
-            LambdaQueryWrapper<ArticleBody> bodyQuery = new LambdaQueryWrapper<>();
-            bodyQuery.eq(ArticleBody::getArticleId, id);
-            this.articleBodyMapper.delete(bodyQuery);
-
-            // 5. 删除文章标签关联表
-            LambdaQueryWrapper<ArticleTag> tagQuery = new LambdaQueryWrapper<>();
-            tagQuery.eq(ArticleTag::getArticleId, id);
-            this.articleTagMapper.delete(tagQuery);
-
-            // 6. 删除文章相关的评论
-            LambdaQueryWrapper<Comment> commentQuery = new LambdaQueryWrapper<>();
-            commentQuery.eq(Comment::getArticleId, id);
-            this.commentMapper.delete(commentQuery);
-
-            // 7. 发送 MQ 消息清理缓存
-            try {
-                rabbitTemplate.convertAndSend(RabbitConfig.BLOG_EXCHANGE, "article.delete", id);
-                log.info("【MQ】缓存清理消息发送成功，文章及相关数据已删除，ID: {}", id);
-            } catch (AmqpException e) {
-                log.error("【MQ】消息发送失败，MQ 服务可能异常，但不影响删除。文章ID: {}", id, e);
-            }
-
-            return Result.success("删除成功");
-
-        } finally {
-            // 8. 解除分布式锁
-            stringRedisTemplate.delete(lockKey);
-        }
-    }
 }

@@ -40,7 +40,7 @@ public class ArticleController {
 
     @PostMapping("space/{id}")
     public Result SpaceArticles(@RequestBody PageParams pageParams,@PathVariable("id") String id) {
-        System.out.println("看看id："+id);
+
         return articleService.listArticlesByAuthor(pageParams,id);
     }
 

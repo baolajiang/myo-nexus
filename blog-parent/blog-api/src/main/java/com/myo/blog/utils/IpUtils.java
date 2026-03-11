@@ -232,9 +232,7 @@ public class IpUtils {
     }
 
     public static void main(String[] args) {
-        System.out.println(IpUtils.getCityInfo("163.142.37.113"));
-/*        System.out.println(IpUtils.getCityInfo("127.0.0.1"));
-        System.out.println(search("163.142.37.113"));
-        System.out.println(search("127.0.0.1"));*/
+
+
     }
 }
