@@ -186,10 +186,15 @@ public class CacheAspect {
                         return JSON.parseObject(redisValue, Result.class);
                     }
 
-                    // 执行真实业务方法
+                    // 执行真实业务方法 ，获取业务方法的返回值,
+                    // 带有@Cacheable注解的方法放行，去db查询，
+                    // 将查询结果写入缓存，没有就返回null，写入空值占位符，
+                    // 后续请求直接返回null，不去db查询，避免缓存穿透。
                     Object proceed = pjp.proceed();
 
-                    // 判断是否为空数据，决定写正常缓存还是空值占位符
+                    // 判断是否为空数据，决定写正常缓存还是空值占位符，
+                    // 为空数据时，写入空值占位符，较短过期时间，后续请求直接找这个key返回null，避免缓存穿透。
+                    // 不为空数据时，写入正常缓存，较长过期时间,并且为了避免缓存雪崩，在注解配置的过期时间上加随机抖动，错开失效时间
                     if (isEmptyResult(proceed)) {
                         // 防穿透：DB 也没数据，写空值占位符，较短过期时间
                         log.debug("[缓存] DB 无数据，写入空值占位符，key={}", redisKey);

@@ -18,7 +18,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.List;
 
-// 管理员拦截器
+// 管理员拦截器,没有登录或者没有权限,返回错误信息
 @Component
 @RequiredArgsConstructor
 public class AdminInterceptor implements HandlerInterceptor {
