@@ -179,4 +179,11 @@ public class AdminController {
         return sysLogService.listLog(pageParams);
     }
 
+    @PostMapping("/log/upload")
+    @LogAnnotation(module="系统日志", operator="条件导出日志到R2")
+    public Result uploadLog(@RequestBody PageParams pageParams) {
+        // 交给 Service 层处理具体的打包和上传逻辑
+        return sysLogService.exportLogToR2(pageParams);
+    }
+
 }

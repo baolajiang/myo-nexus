@@ -16,4 +16,9 @@ public interface SysLogService {
     // 备份并清理过期日志
     void backupAndCleanLogs(Long expireTime);
 
+     /**
+     * 导出符合条件的日志到 R2
+     */
+    Result exportLogToR2(PageParams pageParams);
+
 }

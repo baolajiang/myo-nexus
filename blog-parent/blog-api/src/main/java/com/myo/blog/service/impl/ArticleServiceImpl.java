@@ -178,8 +178,28 @@ public class ArticleServiceImpl implements ArticleService {
         if (article == null) {
             return Result.fail(404, "文章不存在");
         }
-        // 增加阅读数
-        threadService.updateArticleViewCount(articleMapper, article.getId());
+        // --- 核心改造：使用 Redis 处理浏览量 ---
+        String redisKey = "blog:article:viewCount";
+        String hashKey = String.valueOf(article.getId());
+
+        // 1. 先判断 Redis 里有没有这篇文章的浏览量
+        Boolean hasKey = stringRedisTemplate.opsForHash().hasKey(redisKey, hashKey);
+        int currentViewCount;
+
+        if (!hasKey) {
+            // 2. 如果 Redis 里没有，说明是系统刚启动或者缓存被清空了
+            // 把数据库里的真实浏览量 + 1 后，初始化存入 Redis
+            currentViewCount = article.getViewCounts() + 1;
+            stringRedisTemplate.opsForHash().put(redisKey, hashKey, String.valueOf(currentViewCount));
+        } else {
+            // 3. 如果 Redis 里已经有了，直接在 Redis 内存里原子加 1（极速！）
+            Long increment = stringRedisTemplate.opsForHash().increment(redisKey, hashKey, 1);
+            currentViewCount = increment.intValue();
+        }
+
+        // 4. 把最新的浏览量设置回 article 对象，保证前端页面马上就能看到最新数字
+        article.setViewCounts(currentViewCount);
+
         return Result.success(copy(article, true, true, true, true));
     }
 

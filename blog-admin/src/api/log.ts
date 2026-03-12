@@ -8,3 +8,13 @@ export function getLogList(params: any) {
     })
 }
 
+
+
+
+export function uploadLog(params: any) {
+    return request({
+        url: '/admin/log/upload',
+        method: 'post',
+        data: params
+    })
+}

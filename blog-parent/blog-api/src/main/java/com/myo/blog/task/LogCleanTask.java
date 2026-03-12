@@ -14,12 +14,10 @@ public class LogCleanTask {
 
     private final SysLogService sysLogService;
 
-    // 每天凌晨 3 点执行
-    @Scheduled(cron = "0 0 3 * * ?")
-    public void cleanOldLogs() {
+    // 现在由 CronTaskRegistrar 注册和管理定时任务
+    public void run() {
         // 30 天前的时间戳
         long thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000);
-
         log.info("[归档任务] 触发，清理 {} 毫秒以前的日志", thirtyDaysAgo);
         sysLogService.backupAndCleanLogs(thirtyDaysAgo);
     }

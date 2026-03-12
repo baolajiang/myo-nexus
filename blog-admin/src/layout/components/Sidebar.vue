@@ -94,6 +94,11 @@
       </el-menu-item>
     </el-sub-menu>
 
+      <el-menu-item index="/system/task">
+        <el-icon><Task /></el-icon>
+        <span>任務管理</span>
+      </el-menu-item>
+
   </el-menu>
 </template>
 

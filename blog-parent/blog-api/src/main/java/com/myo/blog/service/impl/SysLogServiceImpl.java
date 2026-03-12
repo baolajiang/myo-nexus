@@ -12,9 +12,12 @@ import com.myo.blog.service.SysLogService;
 import com.myo.blog.utils.R2UploadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -34,6 +37,9 @@ public class SysLogServiceImpl implements SysLogService {
     private final SysLogDbDeleter sysLogDbDeleter;
 
     private static final int BATCH_SIZE = 1000;
+
+    @Value("${r2.domain}")
+    private String domain;
 
     @Override
     public Result listLog(PageParams pageParams) {
@@ -171,6 +177,55 @@ public class SysLogServiceImpl implements SysLogService {
                     .collect(Collectors.toList());
 
             sysLogMapper.delete(new LambdaQueryWrapper<SysLog>().in(SysLog::getId, ids));
+        }
+    }
+
+    @Override
+    public Result exportLogToR2(PageParams pageParams) {
+        // 1. 构建查询条件
+        LambdaQueryWrapper<SysLog> queryWrapper = new LambdaQueryWrapper<>();
+
+        if (StringUtils.isNotBlank(pageParams.getModule())) {
+            queryWrapper.eq(SysLog::getModule, pageParams.getModule());
+        }
+        if (StringUtils.isNotBlank(pageParams.getNickname())) {
+            queryWrapper.eq(SysLog::getNickname, pageParams.getNickname());
+        }
+        if (pageParams.getStatus() != null) {
+            queryWrapper.eq(SysLog::getStatus, pageParams.getStatus());
+        }
+        if (StringUtils.isNotBlank(pageParams.getTraceId())) {
+            queryWrapper.eq(SysLog::getTraceId, pageParams.getTraceId());
+        }
+
+        // 按时间倒序，并限制最大导出条数为 5000 条，防止内存溢出
+        queryWrapper.orderByDesc(SysLog::getCreateDate);
+        queryWrapper.last("limit 5000");
+
+        // 2. 从数据库查出日志列表
+        List<SysLog> logList = sysLogMapper.selectList(queryWrapper);
+
+        if (logList.isEmpty()) {
+            return Result.fail(20001, "当前条件下没有可导出的日志");
+        }
+
+        // 3. 将对象转为 JSON 字符串，然后直接转为 byte 数组
+        String jsonString = JSON.toJSONString(logList);
+        byte[] bytes = jsonString.getBytes(StandardCharsets.UTF_8);
+
+        // 4. 生成 R2 云端的文件名，带上时间戳防止覆盖
+        String dateStr = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String fileName = "backup/syslog/log_export_" + dateStr + ".json";
+
+        // 5. 调用你已有的 uploadBytes 方法进行上传
+        boolean isSuccess = r2UploadService.uploadBytes(fileName, bytes);
+
+        if (isSuccess) {
+            // 6. 拼接完整的访问 URL 返回给前端
+            String fileUrl = domain.endsWith("/") ? domain + fileName : domain + "/" + fileName;
+            return Result.success(fileUrl);
+        } else {
+            return Result.fail(50000, "日志导出到R2失败，请查看后台运行日志");
         }
     }
 }

@@ -27,6 +27,7 @@
         <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="resetSearch">重置</el-button>
+          <el-button type="success" :loading="isUploading" @click="handleUploadLog">提前上传日志</el-button>
         </el-form-item>
       </el-form>
 
@@ -103,7 +104,9 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { getLogList } from '../../api/log'
+// 新增：引入 ElMessage 和 uploadLog 接口
+import { ElMessage } from 'element-plus'
+import { getLogList, uploadLog } from '../../api/log'
 import dayjs from 'dayjs'
 
 const loading = ref(false)
@@ -112,7 +115,9 @@ const total = ref(0)
 const detailVisible = ref(false)
 const currentLog = ref<any>({})
 
-// 重点：这里的 key 必须和后端 PageParams 实体类中的属性名完全一致
+// 新增：上传按钮的加载状态
+const isUploading = ref(false)
+
 const queryParams = reactive({
   page: 1,
   pageSize: 20,
@@ -136,7 +141,6 @@ const formatJson = (str: string) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    // 将整个 queryParams 对象作为参数传递给 API 接口
     const res: any = await getLogList(queryParams)
     if (res.data.success) {
       logList.value = res.data.data.records
@@ -155,7 +159,6 @@ const handleSearch = () => {
 }
 
 const resetSearch = () => {
-  // 重置所有搜索字段
   queryParams.page = 1
   queryParams.module = ''
   queryParams.nickname = ''
@@ -167,6 +170,33 @@ const resetSearch = () => {
 const showDetail = (row: any) => {
   currentLog.value = row
   detailVisible.value = true
+}
+
+
+const handleUploadLog = async () => {
+  isUploading.value = true
+  try {
+    // 把当前的查询条件传给后端
+    const res: any = await uploadLog(queryParams)
+
+    if (res.data.success) {
+      // 假设后端返回了 R2 的文件链接放在 data 中
+      const fileUrl = res.data.data
+      ElMessage({
+        message: '日志导出成功！正在为您打开...',
+        type: 'success',
+        duration: 3000
+      })
+      // 自动在新标签页打开下载该文件
+      if (fileUrl) {
+        window.open(fileUrl, '_blank')
+      }
+    }
+  } catch (error) {
+    console.error('上传日志失败:', error)
+  } finally {
+    isUploading.value = false
+  }
 }
 
 onMounted(() => {
@@ -186,7 +216,6 @@ onMounted(() => {
   background: #2d2d2d;
   color: #abb2bf;
   padding: 15px;
-  border-radius: 4px;
   border-radius: 4px;
   max-height: 350px;
   overflow-y: auto;
