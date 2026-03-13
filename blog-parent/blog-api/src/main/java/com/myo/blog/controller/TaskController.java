@@ -43,9 +43,10 @@ public class TaskController {
         return sysTaskService.changeStatus(taskId, status);
     }
 
-    @PostMapping("/run/{taskId}")
+    @PostMapping("/run")
     @LogAnnotation(module="系统任务", operator="手动执行一次")
-    public Result runTaskOnce(@PathVariable("taskId") Long taskId) {
-        return sysTaskService.runTaskOnce(taskId);
+    public Result runTaskOnce(@RequestBody com.myo.blog.dao.pojo.SysTask sysTask) {
+
+        return sysTaskService.runTaskOnce(sysTask);
     }
 }

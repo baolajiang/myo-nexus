@@ -26,15 +26,33 @@ public class ContentAuditTask {
 
     public void run() {
         log.info("[智能风控任务] 开始执行，扫描近期新增评论...");
+        executeAudit(10);// 默认查过去 10 分钟
+    }
 
-        // 1. 查询过去 10 分钟内新增的评论
-        long tenMinutesAgo = System.currentTimeMillis() - (10 * 60 * 1000);
+    // 2. 有参方法（供动态调度使用）
+    public void run(String param) {
+        log.info("[智能风控任务] 接收到动态参数：{}", param);
+        int minutes = 10;
+        try {
+            if (org.apache.commons.lang3.StringUtils.isNotBlank(param)) {
+                minutes = Integer.parseInt(param.trim());
+            }
+        } catch (Exception e) {
+            log.warn("参数解析失败，默认扫描过去10分钟");
+        }
+        executeAudit(minutes);
+    }
+    // 3. 核心逻辑：执行审核
+    private void executeAudit(int minutes) {
+        log.info("[智能风控任务] 开始扫描过去 {} 分钟的新增评论...", minutes);
+        // 1. 查询过去 minutes 分钟内新增的评论
+        long tenMinutesAgo = System.currentTimeMillis() - ((long) minutes * 60 * 1000);
         LambdaQueryWrapper<Comment> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.ge(Comment::getCreateDate, tenMinutesAgo);
         List<Comment> recentComments = commentMapper.selectList(queryWrapper);
 
         if (recentComments.isEmpty()) {
-            log.info("[智能风控任务] 过去10分钟无新评论，巡检结束。");
+            log.info("[智能风控任务] 过去{}分钟无新评论，巡检结束。", minutes);
             return;
         }
 

@@ -21,14 +21,14 @@ public class CronTaskRegistrar implements DisposableBean {
     private final Map<Long, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
 
     // 添加并启动定时任务
-    public void addCronTask(Long taskId, String taskName, String beanName, String methodName, String cronExpression) {
+    public void addCronTask(Long taskId, String taskName, String beanName, String methodName, String cronExpression, String taskParam) {
         // 如果任务已经在跑了，先把它取消掉
         if (scheduledTasks.containsKey(taskId)) {
             removeCronTask(taskId);
         }
 
-        // 创建任务包装器
-        SchedulingRunnable task = new SchedulingRunnable(taskId, taskName, beanName, methodName);
+        // 创建任务包装器，支持动态参数
+        SchedulingRunnable task = new SchedulingRunnable(taskId, taskName, beanName, methodName, taskParam);
 
         // 交给线程池调度
         ScheduledFuture<?> future = threadPoolTaskScheduler.schedule(task, new CronTrigger(cronExpression));

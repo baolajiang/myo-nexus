@@ -16,6 +16,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="beanName" label="调用目标 (Bean)" width="180" />
+
+        <el-table-column prop="taskParam" label="执行参数" show-overflow-tooltip min-width="120" />
+
         <el-table-column label="Cron 表达式" width="220">
           <template #default="scope">
             <div>{{ scope.row.cronExpression }}</div>
@@ -77,7 +80,14 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTaskList, runTaskOnce, getTaskLogList, changeTaskStatus } from '../../api/task'
 import dayjs from 'dayjs'
 import cronstrue from 'cronstrue/i18n'
-
+// 针对不同任务的专属参数提示字典
+const paramHints: Record<string, string>= {
+  'logCleanTask': '输入示例：30 <br/>(代表清理 30 天前的日志，只能输入纯数字)',
+  'contentAuditTask': '输入示例：10 <br/>(代表扫描过去 10 分钟的新评论，只能输入纯数字)',
+  'linkCheckTask': '输入示例：{"timeout": 3000} <br/>(JSON格式，代表将超时时间临时设为 3 秒)',
+  'databaseBackupTask': '输入示例：{"type": "schema_only", "compress": false} <br/>(JSON格式，type设为schema_only仅备份表结构，compress设为false关闭压缩)',
+  'viewCountSyncTask': '输入示例：{"articleId": "123456"} <br/>(JSON格式，代表只精准同步这一篇文章的浏览量)'
+}
 const loading = ref(false)
 const taskList = ref([])
 
@@ -91,6 +101,7 @@ const translateCron = (cron: string) => {
     return '表达式无法解析'
   }
 }
+
 // 日志弹窗相关
 const logVisible = ref(false)
 const logLoading = ref(false)
@@ -135,20 +146,47 @@ const handleStatusChange = async (row: any) => {
   }
 }
 
-// 手动执行一次
-const handleRunOnce = (row: any) => {
-  ElMessageBox.confirm(`确认要立即执行一次【${row.taskName}】任务吗？`, '提示', {
-    type: 'warning'
-  }).then(async () => {
+const handleRunOnce = (row: { beanName: string | number; remark: any; taskName: any; taskParam: any; id: any }) => {
+  // 根据任务的 beanName 获取专属提示，如果没有匹配到则显示通用提示
+  const specificHint = paramHints[row.beanName] || '如果该任务支持传参，请按照后端设定的格式输入。'
+
+  // 构造带有精美提示信息的 HTML 内容
+  const promptHtml = `
+    <div style="font-size: 13px; color: #606266; line-height: 1.6; margin-bottom: 10px; padding: 10px; background: #f4f4f5; border-radius: 4px;">
+      <div style="margin-bottom: 5px;">【任务说明】：${row.remark || '暂无说明'}</div>
+      <div style="color: #e6a23c;">
+        【参数提示】：<br/>
+        ${specificHint}<br/>
+        <span style="color: #909399; font-size: 12px;">注：留空则按无参默认逻辑执行。默认已填入数据库配置。</span>
+      </div>
+    </div>
+    <div style="margin-bottom: 8px;">请输入本次执行的动态参数：</div>
+  `;
+
+  ElMessageBox.prompt(promptHtml, `手动执行任务：${row.taskName}`, {
+    dangerouslyUseHTMLString: true, // 允许渲染 HTML，做出高级界面的关键
+    confirmButtonText: '立即下发',
+    cancelButtonText: '取消',
+    inputValue: row.taskParam || '', // 自动填入数据库里的默认参数
+    inputType: 'textarea',
+    inputPlaceholder: '留空则执行无参方法'
+  }).then(async ({ value }) => {
     try {
-      const res: any = await runTaskOnce(row.id)
+      // 构造传给后端的参数对象
+      const runParams = {
+        id: row.id,
+        taskParam: value
+      }
+      const res = await runTaskOnce(runParams)
       if (res.data.success) {
-        ElMessage.success('执行指令已下发')
+        ElMessage.success(`任务 [${row.taskName}] 已触发执行`)
       }
     } catch (e) {
       console.error('执行指令下发失败', e)
     }
-  }).catch(() => {})
+  }).catch(() => {
+    ElMessage.info('已取消执行')
+  })
 }
 
 // 查看调度日志

@@ -20,4 +20,5 @@ public class SysTask {
     private Integer status;
     private String remark;
     private Long createDate;
+    private String taskParam;//支持动态执行参数
 }

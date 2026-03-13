@@ -10,10 +10,11 @@ export function getTaskList(params: any) {
 }
 
 // 手动执行一次任务
-export function runTaskOnce(taskId: string) {
+export function runTaskOnce(params: any) {
     return request({
-        url: `/admin/task/run/${taskId}`,
-        method: 'post'
+        url: '/admin/task/run',
+        method: 'post',
+        data: params // 把对象放在请求体里传给后端
     })
 }
 
