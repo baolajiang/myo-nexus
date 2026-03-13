@@ -9,10 +9,9 @@ import com.myo.blog.dao.pojo.SysTaskLog;
 import com.myo.blog.entity.Result;
 import com.myo.blog.entity.params.PageParams;
 import com.myo.blog.service.SysTaskService;
-import com.myo.blog.task.CronTaskRegistrar;
-import com.myo.blog.task.SchedulingRunnable;
+import com.myo.blog.task.core.CronTaskRegistrar;
+import com.myo.blog.task.core.SchedulingRunnable;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
 

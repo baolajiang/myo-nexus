@@ -16,7 +16,14 @@
           </template>
         </el-table-column>
         <el-table-column prop="beanName" label="调用目标 (Bean)" width="180" />
-        <el-table-column prop="cronExpression" label="Cron 表达式" width="150" align="center" />
+        <el-table-column label="Cron 表达式" width="220">
+          <template #default="scope">
+            <div>{{ scope.row.cronExpression }}</div>
+            <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+              {{ translateCron(scope.row.cronExpression) }}
+            </div>
+          </template>
+        </el-table-column>
 
         <el-table-column label="状态" width="100" align="center">
           <template #default="scope">
@@ -69,10 +76,21 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTaskList, runTaskOnce, getTaskLogList, changeTaskStatus } from '../../api/task'
 import dayjs from 'dayjs'
+import cronstrue from 'cronstrue/i18n'
 
 const loading = ref(false)
 const taskList = ref([])
 
+// 翻译 Cron 表达式的函数
+const translateCron = (cron: string) => {
+  if (!cron) return ''
+  try {
+    // 强制使用简体中文翻译
+    return cronstrue.toString(cron, { locale: 'zh_CN' })
+  } catch (e) {
+    return '表达式无法解析'
+  }
+}
 // 日志弹窗相关
 const logVisible = ref(false)
 const logLoading = ref(false)

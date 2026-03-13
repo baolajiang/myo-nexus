@@ -1,4 +1,4 @@
-package com.myo.blog.task;
+package com.myo.blog.task.jobs;
 
 import com.myo.blog.utils.R2UploadService;
 import lombok.RequiredArgsConstructor;
@@ -10,15 +10,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-
-@Slf4j
-@Component
-@RequiredArgsConstructor
 // 数据库备份任务，用于定时备份数据库到 R2 云端
 //这个任务的逻辑是：读取 MySQL 账号密码
 // 利用 Java 执行 mysqldump 命令，
 // 把所有数据导出成一个 SQL 文本，
 // 然后直接转成 byte 数组调用 R2UploadService 传到云端。
+@Slf4j
+@Component
+@RequiredArgsConstructor
 public class DatabaseBackupTask {
 
     private final R2UploadService r2UploadService;

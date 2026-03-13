@@ -1,4 +1,4 @@
-package com.myo.blog.config;
+package com.myo.blog.task.core;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

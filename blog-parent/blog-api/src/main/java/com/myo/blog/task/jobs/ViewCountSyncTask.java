@@ -1,4 +1,4 @@
-package com.myo.blog.task;
+package com.myo.blog.task.jobs;
 
 import com.myo.blog.dao.mapper.ArticleMapper;
 import com.myo.blog.dao.pojo.Article;
@@ -8,7 +8,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
-
+// 文章浏览量同步任务，用于定时同步 Redis 中的浏览量到 MySQL 数据库
 @Slf4j
 @Component
 @RequiredArgsConstructor

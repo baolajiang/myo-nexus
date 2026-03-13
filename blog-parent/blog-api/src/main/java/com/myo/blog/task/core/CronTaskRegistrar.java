@@ -1,8 +1,7 @@
-package com.myo.blog.task;
+package com.myo.blog.task.core;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.stereotype.Component;

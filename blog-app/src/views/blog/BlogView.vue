@@ -204,7 +204,7 @@
           // 核心判断逻辑：
           // 如果文章是加密状态 (viewKeys == 1) 并且 用户未登录 (!token)
           // 后端传过来的 viewKeys 可能是字符串 "1" 也可能是数字 1，使用 == 比较保险
-          if (this.article.viewKeys == 1 && !this.$store.state.token) {
+          if (this.article.viewKeys === 1 && !this.$store.state.token) {
 
             this.$myMessage({
               type: 'warning',
@@ -306,7 +306,8 @@
       queryCount(){
       let that = this;
       getCount(that.article.id).then(data =>{
-        that.article.count=data.data.length;
+
+        that.article.count=data.data;
       }).catch(error=>{
         console.debug(error)
       })

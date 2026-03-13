@@ -1,4 +1,4 @@
-package com.myo.blog.task;
+package com.myo.blog.task.jobs;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.myo.blog.dao.mapper.LinkMapper;
@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
-
+// 友链检测任务
 @Slf4j
 @Component
 @RequiredArgsConstructor

@@ -1,11 +1,13 @@
-package com.myo.blog.task;
+package com.myo.blog.task.core;
 
 import com.myo.blog.dao.mapper.SysTaskLogMapper;
 import com.myo.blog.dao.pojo.SysTaskLog;
+import com.myo.blog.service.MailService;
 import com.myo.blog.utils.SpringContextUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Method;
@@ -18,7 +20,9 @@ public class SchedulingRunnable implements Runnable {
     private final String taskName;
     private final String beanName;
     private final String methodName;
-
+    // 从 application.yml 读取发件人配置
+    @Value("${spring.mail.username}")
+    private String fromEmail;
 
 
     @Override
@@ -64,6 +68,22 @@ public class SchedulingRunnable implements Runnable {
                 errorMsg = errorMsg.substring(0, 2000);
             }
             taskLog.setErrorInfo(errorMsg);
+
+            // 增加：任务失败自动发送邮件告警
+            try {
+                // 动态获取邮件服务
+                MailService mailService = SpringContextUtils.getBean(com.myo.blog.service.MailService.class);
+
+
+                String subject = "【系统告警】定时任务执行失败 - " + taskName;
+                String content = String.format("您的博客系统发生定时任务执行异常！\n\n任务ID：%d\n任务名称：%s\n调用目标：%s\n报错信息：\n%s\n\n请及时登录后台排查。",
+                        taskId, taskName, beanName, errorMsg);
+
+                mailService.sendMailAsync(fromEmail, subject, content);
+            } catch (Exception mailEx) {
+                log.error("发送任务失败告警邮件异常", mailEx);
+            }
+
         } finally {
             // 6. 计算耗时并保存入库
             long times = System.currentTimeMillis() - startTime;
