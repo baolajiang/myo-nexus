@@ -82,6 +82,7 @@ public class CommentsServiceImpl implements CommentsService {
         comment.setAuthorId(sysUser.getId());
         comment.setContent(commentParam.getContent());
         comment.setCreateDate(System.currentTimeMillis());
+        comment.setStatus(1);
         String parent = commentParam.getParent();
         if (parent == null || parent.equals("0")) {
             comment.setLevel(1);

@@ -27,5 +27,7 @@ public class Comment {
 
     private Integer level;
 
+    private Integer status;//  1=正常，2=待人工复审，0=已删除
+
 
 }

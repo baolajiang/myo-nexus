@@ -31,22 +31,19 @@ public class LinkCheckTask {
     // 2. 有参方法：供前端“执行一次”时动态传参使用
     public void run(String param) {
         log.info("[友链检测任务] 手动触发，接收到动态参数：{}", param);
+        int timeout = 5000;
 
-        int timeout = 5000; // 默认超时时间
-
-        // 解析参数：提取 {"timeout": 3000} 中的数字
-        if (StringUtils.hasText(param)) {
-            try {
-                // 使用正则安全提取 timeout 的值，无需引入额外的 JSON 库
-                Matcher matcher = Pattern.compile("\"timeout\"\\s*:\\s*(\\d+)").matcher(param);
-                if (matcher.find()) {
-                    timeout = Integer.parseInt(matcher.group(1));
-                }
-            } catch (Exception e) {
-                log.warn("[友链检测任务] 参数解析失败，将使用默认超时时间 5000ms");
+        if (org.springframework.util.StringUtils.hasText(param)) {
+            // 只需要做最基础的业务防御
+            if (!param.contains("{")) {
+                // 手动抛出 IllegalArgumentException，引擎立刻能识别！
+                throw new IllegalArgumentException("参数必须是 JSON 格式");
+            }
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\"timeout\"\\s*:\\s*(\\d+)").matcher(param);
+            if (matcher.find()) {
+                timeout = Integer.parseInt(matcher.group(1));
             }
         }
-
         executeCheck(timeout);
     }
 

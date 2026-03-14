@@ -1,0 +1,23 @@
+(Spring Boot 项目启动)
+->
+(扫描配置类：Spring 发现带有 @Configuration 的 TaskSchedulerConfig 类)
+->
+(实例化定制线程池：因为带有 @Bean 注解，Spring 执行该方法，在 IoC 容器中创建并管理一个拥有 20 个核心线程的 ThreadPoolTaskScheduler)
+->
+(扫描业务类：Spring 发现带有 @Service 注解的 SysTaskServiceImpl，将其也放入 IoC 容器)
+->
+(搜查特殊接口：Spring Boot 容器初始化完成的最后阶段，自动寻找到实现了 CommandLineRunner 接口的 SysTaskServiceImpl)
+->
+(触发点火：自动执行 SysTaskServiceImpl 的 run 方法)
+->
+(加载弹药：连接 MySQL 数据库，查出所有状态为 1 即开启的定时任务)
+->
+(引擎封装：遍历任务，将 Bean 名称、方法名和动态参数封装进咱们打造的 SchedulingRunnable 核心引擎中)
+->
+(指令装填：调用 CronTaskRegistrar.addCronTask 方法，将引擎对象和 Cron 表达式进行绑定)
+->
+(正式托管：任务被正式移交给刚才 @Bean 注入的 ThreadPoolTaskScheduler 专属线程池，开始在后台静默待命)
+->
+(时间到达自动执行：Cron 时间一到，线程池分配一条独立线程，执行 SchedulingRunnable 里的反射调用代码)
+->
+(闭环收尾：任务跑完或被异常阻断后，自动计算耗时、保存执行日志到数据库，必要时触发邮件告警静音机制)

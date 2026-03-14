@@ -32,7 +32,13 @@ public class ViewCountSyncTask {
     // 2. 有参方法：供前端“执行一次”时动态传参使用
     public void run(String param) {
         log.info("[浏览量同步任务] 手动触发，接收到动态参数：{}", param);
-
+        //校验参数格式是否正确
+        if (org.springframework.util.StringUtils.hasText(param)) {
+            String trimmedParam = param.trim();
+            if (!trimmedParam.startsWith("{") || !trimmedParam.endsWith("}")) {
+                throw new IllegalArgumentException("参数格式错误：必须是标准 JSON 格式！");
+            }
+        }
         boolean forceSync = true;
         String targetArticleId = null;
 
@@ -41,16 +47,11 @@ public class ViewCountSyncTask {
             if (param.contains("\"forceSync\":false") || param.contains("\"forceSync\": false")) {
                 forceSync = false;
             }
-
-            // 解析是否指定了特定的文章 ID，例如 {"articleId": "123456"}
-            try {
-                Matcher matcher = Pattern.compile("\"articleId\"\\s*:\\s*\"([^\"]+)\"").matcher(param);
-                if (matcher.find()) {
-                    targetArticleId = matcher.group(1);
-                }
-            } catch (Exception e) {
-                log.warn("[浏览量同步任务] 参数 articleId 解析失败");
+            Matcher matcher = Pattern.compile("\"articleId\"\\s*:\\s*\"([^\"]+)\"").matcher(param);
+            if (matcher.find()) {
+                targetArticleId = matcher.group(1);
             }
+
         }
 
         executeSync(forceSync, targetArticleId);
@@ -94,6 +95,9 @@ public class ViewCountSyncTask {
                 int updated = articleMapper.updateById(article);
                 if (updated > 0) {
                     successCount++;
+                    // [同步到数据库成功后，立刻清理掉 Redis 里的这条记录！
+                    // 这样下次只要没人访问这篇文章，就不会产生多余的同步操作
+                    stringRedisTemplate.opsForHash().delete(VIEW_COUNT_KEY, articleId);
                 } else {
                     // 如果 updated 为 0，说明数据库里没有这篇文章（可能被删除了），顺手清理 Redis 里的脏数据
                     log.warn("[浏览量同步任务] 数据库中未找到文章，准备清理 Redis 中的脏数据: {}", articleId);

@@ -33,20 +33,10 @@ public class LogCleanTask {
     // ==========================================
     public void run(String param) {
         log.info("[系统日志清理任务] 接收到动态参数：{}", param);
-
-        try {
-            // 解析参数：假设我们允许前端传入想要清理的天数，比如 "10" 代表清理10天前的
-            int daysToClean = Integer.parseInt(param.trim());
-            log.info("准备按照自定义天数清理：{} 天前的日志", daysToClean);
-
-            long customTimeAgo = System.currentTimeMillis() - ((long) daysToClean * 24 * 60 * 60 * 1000);
-            executeClean(customTimeAgo);
-
-        } catch (NumberFormatException e) {
-            log.error("参数解析失败，请输入有效的数字！参数内容：{}", param);
-            // 抛出异常，测试我们的调度引擎是否会捕获并触发重试机制
-            throw new RuntimeException("日志清理任务执行失败：参数格式不正确，必须为数字！");
-        }
+        // 如果前端传了 "dadwa"，这里直接抛出 NumberFormatException
+        // 底层引擎会自动识别出它是非法参数，直接阻断并报警！不需要你写任何 try-catch！
+        int daysToClean = org.springframework.util.StringUtils.hasText(param) ? Integer.parseInt(param.trim()) : 30;
+        executeClean(System.currentTimeMillis() - ((long) daysToClean * 24 * 60 * 60 * 1000));
     }
 
     // ==========================================
