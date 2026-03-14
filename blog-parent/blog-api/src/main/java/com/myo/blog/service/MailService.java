@@ -32,7 +32,7 @@ public class MailService {
      * @param subject 邮件主题
      * @param content 邮件正文
      */
-    @Async
+    @Async("taskExecutor")
     public void sendMailAsync(String to, String subject, String content) {
         try {
             // 1. 创建简单邮件消息对象

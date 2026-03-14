@@ -23,7 +23,7 @@ import java.util.List;
 @Aspect     // 1. 声明这是一个切面类
 @Component  // 2. 将该类交给 Spring 容器管理（实例化为 Bean）
 @RequiredArgsConstructor
-public class PermissionAspect {
+public class RequirePermissionAspect {
 
 
     private final SysUserService sysUserService;

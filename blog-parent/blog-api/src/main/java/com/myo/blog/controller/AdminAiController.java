@@ -38,12 +38,12 @@ import java.util.List;
 
  * 请求链路说明：
  * 每个请求在到达本 Controller 之前，已经过两道拦截器处理：
- * LoginInterceptor（验证登录，将 SysUser 存入 UserThreadLocal）→
+ * AuthInterceptor（验证登录，将 SysUser 存入 UserThreadLocal）→
  * AdminInterceptor（验证管理员权限）→ AdminAiController
  * 因此本类可以直接从 UserThreadLocal 获取当前管理员信息，无需重复校验。
 
  * 安全机制（三层防御）：
- *  拦截器层：LoginInterceptor + AdminInterceptor 确保只有合法管理员能访问
+ *  拦截器层：AuthInterceptor + AdminInterceptor 确保只有合法管理员能访问
  *  关键词拦截层：Java 层对高危词汇做前置过滤
  *  系统提示词层：Agent 初始化时注入安全准则，防止模型被越权指令操控
  * 
@@ -79,7 +79,7 @@ public class AdminAiController {
     /**
      * 接收前端 AI 控制台发送的自然语言指令并执行
      * 请求处理流程：
-     *  从 UserThreadLocal 获取当前管理员（由 LoginInterceptor 预先注入）
+     *  从 UserThreadLocal 获取当前管理员（由 AuthInterceptor 预先注入）
      *  日志记录原始指令（带管理员 ID，便于审计溯源）
      *  空指令校验
      *  高危关键词拦截（Java 层防御）
@@ -95,7 +95,7 @@ public class AdminAiController {
     @PostMapping(value = "/chat", consumes = "text/plain")
     public String chat(@RequestBody String message) {
 
-        // 从 UserThreadLocal 获取当前登录的管理员（由 LoginInterceptor 在请求进入时注入）
+        // 从 UserThreadLocal 获取当前登录的管理员（由 AuthInterceptor 在请求进入时注入）
         SysUser currentUser = UserThreadLocal.get();
         String threadId = "admin-session-" + currentUser.getId();
 
