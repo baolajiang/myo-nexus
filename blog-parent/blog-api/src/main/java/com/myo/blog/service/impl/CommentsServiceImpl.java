@@ -49,7 +49,11 @@ public class CommentsServiceImpl implements CommentsService {
     private final ArticleMapper articleMapper;
 
     private final ThreadService threadService;
-
+    /**
+     * 根据文章id 查询所有的评论列表
+     * @param id 文章id
+     * @return  评论列表
+     */
     @Override
     public Result commentsByArticleId(String id) {
         // Redis
@@ -59,6 +63,7 @@ public class CommentsServiceImpl implements CommentsService {
         LambdaQueryWrapper<Comment> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Comment::getArticleId,id);
         queryWrapper.eq(Comment::getLevel,1);
+        queryWrapper.eq(Comment::getStatus, 1);
         queryWrapper.orderByDesc(Comment::getCreateDate);
         List<Comment> comments = commentMapper.selectList(queryWrapper);
 
@@ -112,18 +117,26 @@ public class CommentsServiceImpl implements CommentsService {
     public Result queryCommentCount(String id) {
         LambdaQueryWrapper<Comment> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Comment::getArticleId, id);
-        // 直接执行 select count(*) from myo_comment where article_id = ?
+        queryWrapper.eq(Comment::getStatus, 1);
+        // 直接执行 select count(*) from myo_comment where article_id = ? and status = 1  // 统计正常状态的评论数量
         Long count = commentMapper.selectCount(queryWrapper);
         return Result.success(count);
     }
-
+    /**
+     * 查询评论列表
+     * @param pageParams 分页参数
+     * @return 评论列表
+     */
     @Override
     public Result listComment(PageParams pageParams) {
         // 1. 分页参数
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<Comment> page =
                 new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageParams.getPage(), pageParams.getPageSize());
         LambdaQueryWrapper<Comment> queryWrapper = new LambdaQueryWrapper<>();
-
+        // 对 status 的条件判断
+        if (pageParams.getStatus() != null) {
+            queryWrapper.eq(Comment::getStatus, pageParams.getStatus());
+        }
         // 2. 关键词模糊搜索
         if (StringUtils.isNotBlank(pageParams.getKeyword())) {
             queryWrapper.like(Comment::getContent, pageParams.getKeyword());
@@ -170,6 +183,26 @@ public class CommentsServiceImpl implements CommentsService {
 
         return Result.success("删除成功");
     }
+
+        /**
+         * 改变评论状态
+         * @param id 评论id
+         * @param status 状态值
+         * @return
+         */
+    @Override
+    @Transactional
+    public Result changeCommentStatus(String id, Integer status) {
+        Comment comment = commentMapper.selectById(id);
+        if (comment == null) {
+            return Result.fail(400, "评论不存在");
+        }
+        comment.setStatus(status);
+        commentMapper.updateById(comment);
+        return Result.success("状态更新成功");
+    }
+
+
 
     // 这是专门给后台用的转换方法，只查作者、被回复人、文章标题，不查树状子节点
     // 前端显示 :评论者 评论内容 所属文章 发布时间
@@ -239,6 +272,7 @@ public class CommentsServiceImpl implements CommentsService {
         LambdaQueryWrapper<Comment> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Comment::getParentId,id);
         queryWrapper.eq(Comment::getLevel,2);
+        queryWrapper.eq(Comment::getStatus, 1);
         return copyList(commentMapper.selectList(queryWrapper));
     }
 }

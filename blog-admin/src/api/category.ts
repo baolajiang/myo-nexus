@@ -11,7 +11,7 @@ export function getCategoryList() {
 // 新增分类
 export function addCategory(data: any) {
     return request({
-        url: '/categorys',
+        url: 'admin/category',
         method: 'post',
         data
     })
@@ -20,7 +20,7 @@ export function addCategory(data: any) {
 // 修改分类
 export function updateCategory(data: any) {
     return request({
-        url: '/categorys',
+        url: 'admin/category',
         method: 'put',
         data
     })
@@ -29,7 +29,7 @@ export function updateCategory(data: any) {
 // 删除分类
 export function deleteCategory(id: string) {
     return request({
-        url: `/categorys/${id}`,
+        url: `admin/category/${id}`,
         method: 'delete'
     })
 }

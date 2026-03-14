@@ -95,7 +95,7 @@
     </el-sub-menu>
 
       <el-menu-item index="/system/task">
-        <el-icon><Task /></el-icon>
+        <el-icon><Timer /></el-icon>
         <span>任務管理</span>
       </el-menu-item>
 
@@ -109,7 +109,7 @@ import {
   Odometer, Document, Edit, List, Folder,
   Operation, ChatDotRound, Link,
   User, UserFilled,
-  Setting, Warning, DataLine, Picture, Refresh
+  Setting, Warning, DataLine, Picture, Refresh, Timer
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

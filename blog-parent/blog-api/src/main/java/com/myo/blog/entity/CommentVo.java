@@ -27,4 +27,6 @@ public class CommentVo  {
 
     private String articleTitle;
 
+    private Integer status;
+
 }

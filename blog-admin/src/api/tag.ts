@@ -11,7 +11,7 @@ export function getTagsByCategoryId(categoryId: string) {
 // 新增标签
 export function addTag(data: any) {
     return request({
-        url: '/tags',
+        url: 'admin/tags',
         method: 'post',
         data: data
     })
@@ -20,7 +20,7 @@ export function addTag(data: any) {
 // 修改标签
 export function updateTag(data: any) {
     return request({
-        url: '/tags',
+        url: 'admin/tags',
         method: 'put',
         data: data
     })
@@ -29,7 +29,7 @@ export function updateTag(data: any) {
 // 删除标签
 export function deleteTag(id: string) {
     return request({
-        url: `/tags/${id}`,
+        url: `admin/tags/${id}`,
         method: 'delete'
     })
 }

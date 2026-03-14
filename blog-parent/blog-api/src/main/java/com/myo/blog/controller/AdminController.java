@@ -11,7 +11,7 @@ import com.myo.blog.entity.ErrorCode;
 import com.myo.blog.entity.Result;
 import com.myo.blog.entity.params.PageParams;
 import com.myo.blog.entity.params.UserParam;
-import com.myo.blog.service.ArticleService;
+
 import com.myo.blog.service.CommentsService;
 import com.myo.blog.service.SysLogService;
 import com.myo.blog.service.SysUserService;
@@ -32,13 +32,8 @@ public class AdminController {
 
     private final IpBlacklistMapper ipBlacklistMapper;
 
-    private final ArticleService articleService;
 
-    private final SysUserService sysUserService;
 
-    private final CommentsService commentsService;
-
-    private final SysLogService sysLogService;
     /**
      * 1. 手动封禁 IP
      */
@@ -101,89 +96,8 @@ public class AdminController {
         // 直接返回分页结果
         return Result.success(ipBlacklistPage);
     }
-    /**
-     * 查看用户列表
-     * 只要有 'user:list' 权限就能看
-     */
-    @RequirePermission("user:list")
-    @PostMapping("user/list")
-    public Result UserList(@RequestBody PageParams pageParams) {
-
-        return sysUserService.UserList(pageParams);
-    }
-
-    /**
-     * 修改用户账号状态 (封禁/解封)
-     * 只有拥有 'user:ban' 权限的管理员才能调用
-     */
-    @RequirePermission("user:ban")
-    @PostMapping("user/status")
-    @LogAnnotation(module = "用户管理", operator = "更新用户状态")
-    public Result updateUserStatus(@RequestBody UserParam userParam) {
-        // 直接调用 Service 层的新方法
-        return sysUserService.updateUserStatus(userParam);
-    }
-    /**
-     * 更新用户信息 (用于编辑功能，可修改昵称、邮箱、手机号、状态等)
-     */
-    @PostMapping("user/update")
-    @RequirePermission("user:edit")
-    @LogAnnotation(module = "用户管理", operator = "编辑用户资料")
-    public Result updateUser(@RequestBody UserParam userParam) {
-        // 复用 Service 层已有的 updateUser 方法
-        // 该方法会处理基本信息更新，如果状态改为封禁(99)还会自动踢下线
-        int count = sysUserService.updateUser(userParam);
-        if (count > 0) {
-            return Result.success("更新成功");
-        }
-        return Result.fail(ErrorCode.OPERATION_FAILED.getCode(), "更新失败");
-    }
-    /**
-     * 文章列表 (后台管理专用)
-     */
-    @PostMapping("article/list")
-    public Result listArticle(@RequestBody PageParams pageParams) {
-        return articleService.listArticleForAdmin(pageParams);
-    }
 
 
-    /**
-     * 删除文章
-     */
-    @PostMapping("article/delete/{id}")
-    @RequirePermission("article:delete")
-    @LogAnnotation(module = "文章管理", operator = "刪除文章")
-    public Result deleteArticle(@PathVariable("id") String id) {
-        return articleService.deleteArticle(id);
-    }
 
-    @PostMapping("comment/list")
-    @RequirePermission("comment:list")
-    public Result listComment(@RequestBody PageParams pageParams) {
-        return commentsService.listComment(pageParams);
-    }
-
-    @PostMapping("comment/delete/{id}")
-    @RequirePermission("comment:delete")
-    @LogAnnotation(module = "评论管理", operator = "删除评论")
-    public Result deleteComment(@PathVariable("id") String id) {
-        return commentsService.deleteComment(id);
-    }
-
-    /**
-     * 分頁查詢操作日誌
-     */
-    @PostMapping("log/list")
-    @RequirePermission("sys:log:list") // 確保你有對應的權限標識
-    public Result listLog(@RequestBody PageParams pageParams) {
-        return sysLogService.listLog(pageParams);
-    }
-
-    @PostMapping("/log/upload")
-    @LogAnnotation(module="系统日志", operator="条件导出日志到R2")
-    public Result uploadLog(@RequestBody PageParams pageParams) {
-        // 交给 Service 层处理具体的打包和上传逻辑
-        return sysLogService.exportLogToR2(pageParams);
-    }
 
 }

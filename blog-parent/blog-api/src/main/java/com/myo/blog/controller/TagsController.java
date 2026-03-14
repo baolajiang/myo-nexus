@@ -43,22 +43,5 @@ public class TagsController {
         return tagService.findTagsByCategoryId(categoryId);
     }
 
-    @PostMapping
-    @RequirePermission("tag:add")
-    public Result addTag(@RequestBody Tag tag) {
-        return tagService.addTag(tag);
-    }
 
-    @PutMapping
-    @RequirePermission("tag:edit")
-    public Result updateTag(@RequestBody Tag tag) {
-
-        return tagService.updateTag(tag);
-    }
-
-    @DeleteMapping("/{id}")
-    @RequirePermission("tag:delete")
-    public Result deleteTag(@PathVariable("id") String id) {
-        return tagService.deleteTag(id);
-    }
 }

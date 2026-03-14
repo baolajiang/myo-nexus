@@ -1,11 +1,10 @@
-package com.myo.blog.controller;
+package com.myo.blog.admin;
 
 import com.myo.blog.common.aop.LogAnnotation;
 import com.myo.blog.entity.Result;
 import com.myo.blog.entity.params.PageParams;
 import com.myo.blog.service.SysTaskService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;

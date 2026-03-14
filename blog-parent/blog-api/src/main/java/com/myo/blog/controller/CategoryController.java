@@ -39,7 +39,7 @@ public class CategoryController {
         }
     }
 
-    ///category/detail/{id}
+
     @GetMapping("detail/{id}")
     public Result categoryDetailById(@PathVariable("id") String id) {
         // 判空逻辑
@@ -53,20 +53,4 @@ public class CategoryController {
         }
     }
 
-    @PostMapping
-    @RequirePermission("category:add")
-    public Result addCategory(@RequestBody Category category) {
-        return categoryService.addCategory(category);
-    }
-    @PutMapping
-    @RequirePermission("category:edit")
-    public Result updateCategory(@RequestBody Category category) {
-
-        return categoryService.updateCategory(category);
-    }
-    @DeleteMapping("/{id}")
-    @RequirePermission("category:delete")
-    public Result deleteCategory(@PathVariable("id") String id) {
-        return categoryService.deleteCategory(id);
-    }
 }

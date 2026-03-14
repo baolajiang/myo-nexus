@@ -37,4 +37,11 @@ public interface CommentsService {
      * @return
      */
     Result deleteComment(String id);
+     /**
+     * 改变评论状态
+     * @param id 评论id
+     * @param status 状态值
+     * @return
+     */
+    Result changeCommentStatus(String id, Integer status);
 }
