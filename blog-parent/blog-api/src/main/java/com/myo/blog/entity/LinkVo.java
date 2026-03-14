@@ -19,4 +19,9 @@ public class LinkVo {
     private String url;
 
     private String imgicon;
+
+    private Integer status;
+
+    private Integer sort;
+
 }

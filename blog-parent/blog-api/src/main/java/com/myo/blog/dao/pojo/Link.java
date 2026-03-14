@@ -33,6 +33,14 @@ public class Link {
      * 连接图片
      * */
     private String imgicon;
+     /***
+      * 状态 0 禁用 1 正常
+      * */
+    private Integer status;
+     /***
+      * 排序
+      * */
+    private Integer sort;
 
 
 }
