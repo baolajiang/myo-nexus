@@ -5,11 +5,17 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.myo.blog.dao.mapper.CommentMapper;
+import com.myo.blog.dao.mapper.IpBlacklistMapper;
+import com.myo.blog.dao.mapper.SysUserMapper;
 import com.myo.blog.dao.pojo.Comment;
+import com.myo.blog.dao.pojo.IpBlacklist;
+import com.myo.blog.dao.pojo.SysUser;
+import com.myo.blog.utils.IpUtils;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -21,15 +27,31 @@ import java.util.List;
  * 发现违规评论后不直接删除，而是将状态标记为"待人工复审"，
  * 由管理员在后台确认后再决定是否删除，避免 AI 误判导致正常评论丢失。
  *
- * 评论状态约定：1 = 正常，2 = 待人工复审 0 = 已删除
+ * 在内容审核基础上扩展了 AI 风控能力（ban_type=3）：
+ * 若同一 IP 在 24 小时内累计有 3 条以上违规评论，判定为机器人批量灌水，
+ * 自动封禁该 IP，不额外消耗 AI token（纯数据库查询判断）。
+ *
+ * 评论状态约定：1 = 正常，2 = 待人工复审，0 = 已删除
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ContentAuditTask {
 
-    // 引用评论 Mapper，用于查询待审核评论和更新评论状态
+    // 引用评论 Mapper，用于查询待审核评论、更新评论状态、统计同 IP 违规次数
     private final CommentMapper commentMapper;
+
+    // 引用用户 Mapper，用于根据评论者 ID 查询发评论时的 IP 地址
+    private final SysUserMapper sysUserMapper;
+
+    // 引用 IP 黑名单 Mapper，AI 风控触发封禁时写入 myo_ip_blacklist 表
+    private final IpBlacklistMapper ipBlacklistMapper;
+
+    // 引用 Redis 模板，AI 风控触发封禁时同步写入 BAN:IP 键，让拦截器实时生效
+    private final RedisTemplate<String, String> redisTemplate;
+
+    // 同一 IP 在 24 小时内违规评论达到此阈值，触发 AI 风控封禁
+    private static final int AI_BAN_THRESHOLD = 3;
 
     // 从配置文件读取阿里云 DashScope API Key
     @Value("${spring.ai.dashscope.api-key}")
@@ -139,6 +161,14 @@ public class ContentAuditTask {
                     updateComment.setStatus(2);
                     commentMapper.updateById(updateComment);
                     pendingCount++;
+
+                    // ===== AI 风控：检查是否需要封禁该评论者的 IP =====
+                    // 场景：单条违规评论可能是误判或偶发，但同一 IP 短时间内反复发违规评论
+                    //       说明很可能是机器人在批量灌水，需要直接封禁 IP
+                    // 做法：查询该评论者的 IP，统计该 IP 在过去 24 小时内的违规评论数量
+                    //       达到阈值（3条）则触发封禁，写入 MySQL + Redis，ban_type=3
+                    // 优点：完全不调用 AI，0 token 消耗，纯数据库查询判断
+                    checkAndBanByIp(comment.getAuthorId());
                 }
             } catch (Exception e) {
                 // 单条评论检测失败不中断整批，记录日志后继续处理下一条
@@ -148,5 +178,79 @@ public class ContentAuditTask {
 
         log.info("[智能风控任务] 巡检完毕。共扫描 {} 条评论，标记待复审 {} 条。",
                 recentComments.size(), pendingCount);
+    }
+
+    /**
+     * AI 风控核心逻辑：检查该评论者的 IP，若 24 小时内违规评论数达到阈值则封禁
+     *
+     * 判断流程：
+     * 1. 根据评论者 ID 查询其 IP 地址（从 myo_sys_user 表取 last_ipaddr）
+     * 2. 统计该 IP 在过去 24 小时内被标记为"待复审"（status=2）的评论数量
+     *    举例：某 IP 今天已经有 2 条违规评论，现在又来第 3 条 → 触发封禁
+     * 3. 达到阈值且未被封禁过 → 写入 MySQL（ban_type=3）+ 写入 Redis（立即生效）
+     *
+     * @param authorId 发违规评论的用户 ID
+     */
+    private void checkAndBanByIp(String authorId) {
+        try {
+            // 第一步：查询该用户的 IP 地址
+            SysUser user = sysUserMapper.selectById(authorId);
+            if (user == null || user.getLastIpaddr() == null) {
+                log.warn("[AI风控] 无法获取用户 IP，跳过封禁检查，用户ID: {}", authorId);
+                return;
+            }
+            String ip = user.getLastIpaddr();
+
+            // 已被封禁的 IP 不重复处理
+            if (Boolean.TRUE.equals(redisTemplate.hasKey("BAN:IP:" + ip))) {
+                return;
+            }
+
+            // 第二步：统计该 IP 在过去 24 小时内的违规评论数量
+            // 只统计 status=2（待人工复审）的评论，这些都是本任务刚刚判定为违规的
+            long oneDayAgo = System.currentTimeMillis() - (24L * 60 * 60 * 1000);
+            long violationCount = commentMapper.selectCount(
+                    new LambdaQueryWrapper<Comment>()
+                            .eq(Comment::getAuthorId, authorId)
+                            .eq(Comment::getStatus, 2)        // 待复审 = 违规评论
+                            .ge(Comment::getCreateDate, oneDayAgo) // 只看过去 24 小时
+            );
+
+            log.info("[AI风控] IP: {}，过去24小时违规评论数: {}", ip, violationCount);
+
+            // 第三步：达到阈值，触发封禁
+            // 举例：阈值=3，该 IP 今天已有 2 条违规，刚才又被判定 1 条，现在 violationCount=3 → 封禁
+            if (violationCount >= AI_BAN_THRESHOLD) {
+                log.warn("[AI风控] IP: {} 24小时内违规评论达到 {} 条，触发 AI 风控封禁！", ip, violationCount);
+
+                // 写入 MySQL，ban_type=3 标记为 AI 风控触发
+                Long existCount = ipBlacklistMapper.selectCount(
+                        new LambdaQueryWrapper<IpBlacklist>().eq(IpBlacklist::getIp, ip)
+                );
+                if (existCount == 0) {
+                    IpBlacklist blacklist = new IpBlacklist();
+                    blacklist.setIp(ip);
+                    blacklist.setCreateDate(System.currentTimeMillis());
+                    blacklist.setReason("AI风控：24小时内违规评论达到 " + violationCount + " 条，判定为机器人灌水");
+                    blacklist.setBanType(3);        // AI 风控触发封禁
+                    blacklist.setOperatorId("SYSTEM");
+                    blacklist.setStatus(1);         // 封禁中
+                    blacklist.setViolationCount((int) violationCount);
+                    // 查询 IP 归属地，失败不影响封禁流程
+                    try {
+                        blacklist.setIpLocation(IpUtils.getCityInfo(ip));
+                    } catch (Exception ignored) {}
+                    ipBlacklistMapper.insert(blacklist);
+                }
+
+                // 写入 Redis，IpBlackListInterceptor 立即生效拦截该 IP
+                redisTemplate.opsForValue().set("BAN:IP:" + ip,
+                        "AI Ban: " + violationCount + " violations in 24h");
+                log.info("[AI风控] IP: {} 已成功封禁，ban_type=3", ip);
+            }
+        } catch (Exception e) {
+            // 风控检查失败不影响主流程（评论已被标记待复审），只记录日志
+            log.error("[AI风控] 封禁检查异常，用户ID: {}", authorId, e);
+        }
     }
 }

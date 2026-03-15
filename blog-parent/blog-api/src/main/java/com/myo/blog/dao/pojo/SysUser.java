@@ -36,9 +36,8 @@ public class SysUser {
 
     private Integer status;// 0：正常，1：警告，99：被禁用
 
-    private String ipaddr;
 
-    private String LastIpaddr;
+    private String lastIpaddr;
 
     private String remark;// 备注
 

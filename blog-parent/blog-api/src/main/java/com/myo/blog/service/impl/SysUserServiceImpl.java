@@ -47,7 +47,7 @@ public class SysUserServiceImpl implements SysUserService {
     /**
      * 根据用户ID查询用户的所有权限代码列表
      * @param userId 用户ID
-     * @return 权限代码列表
+     * @return 权限代码列表SysUser
      */
     @Override
     public List<String> findPermissionsByUserId(String userId) {
@@ -102,15 +102,8 @@ public class SysUserServiceImpl implements SysUserService {
         return sysUserMapper.selectOne(queryWrapper);
     }
 
-    @Override
-    public SysUser findIpaddr(String account, String password) {
-        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SysUser::getAccount,account);
-        queryWrapper.eq(SysUser::getPassword,password);
-        queryWrapper.select(SysUser::getIpaddr);
-        queryWrapper.last("limit 1");
-        return sysUserMapper.selectOne(queryWrapper);
-    }
+
+
     // 根据token查询用户信息
     @Override
     public Result findUserByToken(String token) {

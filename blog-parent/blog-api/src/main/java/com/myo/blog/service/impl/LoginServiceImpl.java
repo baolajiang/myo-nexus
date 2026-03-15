@@ -277,7 +277,7 @@ public class LoginServiceImpl implements LoginService {
 
         HttpServletRequest request = HttpContextUtils.getHttpServletRequest();
         String ip= IpUtils.getIpAddr(request);
-        sysUser.setIpaddr(ip);
+
         sysUser.setLastIpaddr("");
 
         log.debug("准备保存用户信息 - 账号: {}, 邮箱: {}, IP: {}", account, email, ip);
