@@ -11,7 +11,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.*;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -19,6 +19,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -157,4 +159,62 @@ public class R2UploadService {
             return false;
         }
     }
+
+    /**
+     * 删除 R2 中的文件
+     * 附件管理删除时调用，传入 fileKey（存储路径，不含域名）
+     *
+     * @param key R2 存储路径，例如 cover/xxx.jpg
+     * @return true = 删除成功，false = 删除失败
+     */
+    public boolean deleteFile(String key) {
+        try {
+            DeleteObjectRequest request = DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
+            s3Client.deleteObject(request);
+            log.info("[R2] 文件删除成功, key={}", key);
+            return true;
+        } catch (Exception e) {
+            log.error("[R2] 文件删除失败, key={}", key, e);
+            return false;
+        }
+    }
+    /**
+     * 列举 R2 存储桶中的所有文件
+     * 使用游标分页循环请求，每次最多返回 1000 个对象，直到取完所有文件
+     * 不管桶里有多少文件，都能全部扫出来
+     *
+     * @return 所有文件的 S3Object 列表，每个对象包含 key（路径）和 size（字节大小）
+     */
+    public List<S3Object> listAllFiles() {
+        List<S3Object> allFiles = new ArrayList<>();
+        String continuationToken = null;
+
+        do {
+            // 构建列举请求，每次最多取 1000 个
+            ListObjectsV2Request.Builder requestBuilder = ListObjectsV2Request.builder()
+                    .bucket(bucketName)
+                    .maxKeys(1000);
+
+            // 非第一次请求时带上上次返回的游标，继续从上次结束的位置取
+            if (continuationToken != null) {
+                requestBuilder.continuationToken(continuationToken);
+            }
+
+            ListObjectsV2Response response = s3Client.listObjectsV2(requestBuilder.build());
+
+            // 将本次返回的文件追加到总列表
+            allFiles.addAll(response.contents());
+
+            // 如果还有下一页，取出游标供下次请求使用；否则置为 null 结束循环
+            continuationToken = response.isTruncated() ? response.nextContinuationToken() : null;
+
+        } while (continuationToken != null);
+
+        log.info("[R2] 文件列举完毕，共 {} 个文件", allFiles.size());
+        return allFiles;
+    }
+
 }

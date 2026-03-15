@@ -66,6 +66,12 @@ const routes: Array<RouteRecordRaw> = [
                 component: () => import('../views/system/cache.vue'),
                 meta: { title: '缓存监控' }
             },
+            // === 附件管理 ===
+            {
+                path: 'system/media',
+                component: () => import('../views/system/media.vue'),
+                meta: { title: '附件管理' }
+            },
             // === 任务管理 ===
             {
                 path: 'system/task',

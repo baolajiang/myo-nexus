@@ -8,6 +8,7 @@ import com.myo.blog.dao.mapper.SysLogMapper;
 import com.myo.blog.dao.pojo.SysLog;
 import com.myo.blog.entity.Result;
 import com.myo.blog.entity.params.PageParams;
+import com.myo.blog.service.AttachmentService;
 import com.myo.blog.service.SysLogService;
 import com.myo.blog.utils.R2UploadService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class SysLogServiceImpl implements SysLogService {
 
     private final SysLogMapper sysLogMapper;
     private final R2UploadService r2UploadService;
+    private final AttachmentService attachmentService;
 
     //  注入独立的 DbDeleter Bean，解决 @Transactional 自调用失效问题
     private final SysLogDbDeleter sysLogDbDeleter;
@@ -77,11 +79,11 @@ public class SysLogServiceImpl implements SysLogService {
      用游标分页驱动整个任务：
      lastId = 0
      while(true):
-         查询 id > lastId 且 createDate < 30天前 的数据，取 1000 条
-         如果没数据 → 结束
-         调用 processSafeBackup 处理这批
-         成功 → lastId 推进到这批最后一条的 id，继续下一批
-         失败 → 记录日志，终止任务（等明天凌晨重试）
+     查询 id > lastId 且 createDate < 30天前 的数据，取 1000 条
+     如果没数据 → 结束
+     调用 processSafeBackup 处理这批
+     成功 → lastId 推进到这批最后一条的 id，继续下一批
+     失败 → 记录日志，终止任务（等明天凌晨重试）
      为什么用游标而不是普通分页（page=1,2,3...）？因为删掉第一批之后，第二页的数据会往前移，用页码会漏数据。
      用 id > lastId 就不会有这个问题。
      */
@@ -126,8 +128,8 @@ public class SysLogServiceImpl implements SysLogService {
      ① 把这 1000 条序列化成 JSON bytes
      ② 上传到 R2（文件名：backup/yyyy-MM/logs_batch_N_随机码.json）
      ③ 上传成功？
-        是 → 走事务删除数据库记录
-        否 → 直接返回 false，数据库记录保留不动
+     是 → 走事务删除数据库记录
+     否 → 直接返回 false，数据库记录保留不动
      先备份、后删除，确保数据不会丢。如果上传失败，数据库里的数据完整保留，等下次任务重新处理。
      */
     private boolean processSafeBackup(List<SysLog> records, int index) {
@@ -145,6 +147,20 @@ public class SysLogServiceImpl implements SysLogService {
                 // 2. 上传成功后，通过代理 Bean 调用事务方法，确保 @Transactional 真正生效
                 sysLogDbDeleter.deleteByIds(records);
                 log.info("[归档任务] 批次 {} 备份并清理成功", index);
+
+                // 3. 写入附件管理表
+                String fileDisplayName = fileName.substring(fileName.lastIndexOf("/") + 1);
+                String fileUrl = (domain.endsWith("/") ? domain : domain + "/") + fileName;
+                attachmentService.save(
+                        fileDisplayName,      // 原始文件名
+                        fileName,             // R2 存储路径（fileKey）
+                        fileUrl,              // 完整访问 URL
+                        (long) data.length,   // 文件大小（字节）
+                        "log",                // 文件分类
+                        "application/json",   // MIME 类型
+                        "SYSTEM",             // 上传者
+                        "日志归档清理任务"      // 备注
+                );
                 return true;
             } else {
                 log.error("[归档任务] 批次 {} 上传至 R2 失败，已跳过本地删除", index);
@@ -223,6 +239,19 @@ public class SysLogServiceImpl implements SysLogService {
         if (isSuccess) {
             // 6. 拼接完整的访问 URL 返回给前端
             String fileUrl = domain.endsWith("/") ? domain + fileName : domain + "/" + fileName;
+
+            // 7. 写入附件管理表
+            String fileDisplayName = fileName.substring(fileName.lastIndexOf("/") + 1);
+            attachmentService.save(
+                    fileDisplayName,      // 原始文件名
+                    fileName,             // R2 存储路径（fileKey）
+                    fileUrl,              // 完整访问 URL
+                    (long) bytes.length,  // 文件大小（字节）
+                    "log",                // 文件分类
+                    "application/json",   // MIME 类型
+                    "SYSTEM",             // 上传者
+                    "手动导出日志"          // 备注
+            );
             return Result.success(fileUrl);
         } else {
             return Result.fail(50000, "日志导出到R2失败，请查看后台运行日志");
